@@ -1,0 +1,22 @@
+# src/MLJ/__init__.py
+#####################################################################################
+# MLJ Package
+#
+# API: Entry point when running from within a python script,
+# or called by cli.py when package is run from command line.
+# Author: Jolanda S Müller, Tim Rein, Imperial College London
+# Copyright (c) 2025, Imperial College London, BSD 3-Clause License
+# Date: November 2025
+#####################################################################################
+
+__version__ = "0.0.1"
+
+def run(*, example=False, **kwargs):
+    """Runs the program with given arguments."""
+
+    if example:
+        print("MLJ executed with example keyword.")
+        print(kwargs)
+    else:
+        print("MLJ executed.") 
+        print(kwargs)

@@ -1,0 +1,55 @@
+# --- Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# --- Build / packaging artifacts
+build/
+dist/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+wheels/
+*.egg
+
+# --- Test & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+
+# --- Linters / type checkers
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+
+# --- Editors / IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# --- OS cruft
+.DS_Store
+Thumbs.db
+
+# --- Project-specific
+# keep example inputs, ignore the rest
+input/*
+!input/example_*.csv
+
+# store results locally but don’t commit them
+results/
+!results/.gitkeep
+
+# logs
+*.log

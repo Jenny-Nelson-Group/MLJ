@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MLJ"
+description = "Marcus-Levic-Jortner Formalism to calculate rate constants."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Jolanda S. Müller, Tim Rein"}]
+keywords = ["marcus-levich-jortner", "rates", "emission", "absorption", "radiative","non-radiative"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+]
+
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+version = {attr = "MLJ.__version__"}
+
+[project.urls]
+Homepage = "https://github.com/Jenny-Nelson-Group/MLJ"
+Issues = "https://github.com/Jenny-Nelson-Group/MLJ"
+
+# Optional: create a CLI command 'mlj' -> MLJ.cli:main
+[project.scripts]
+mlj = "MLJ.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
