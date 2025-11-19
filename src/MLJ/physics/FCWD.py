@@ -10,11 +10,12 @@
 
 import numpy as np
 from scipy.special import factorial, genlaguerre
+from typing import Sequence
 
 from MLJ.physics.transition import TransitionType
 import MLJ.physics.constants as const
 
-def fcwd(photon_energies, transition):
+def fcwd(photon_energies: Sequence[float], transition) -> Sequence[float]:
     """
     Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
     For reference formula see: https://journals.aps.org/prx/pdf/10.1103/PhysRevX.8.031055 eq. 8
