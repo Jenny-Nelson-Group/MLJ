@@ -10,32 +10,33 @@
 
 from typing import Callable, Any, Optional
 from MLJ.physics.state import State
+from enum import Enum
 
-def default_V_function(f: float) -> float:
-    """Placeholder for the coupling strength V between the states. """
-    # Example calculation for example mulliken Hush
-    return f
+class TransitionType(Enum):
+    """Enum class to distinguish the different transition types."""
+    ABSORPTION = "absorption"
+    RECOMBINATION = "recombination"
 
 class Transition:
     """Represents a transition between two quantum states."""
     def __init__(self,
-                 state_a: State,  # typically the ground state
-                 state_b: State,  # typically the excited or CT state
-                 oscillator_strength: float = 1,
-                 dipole_moment: float = 1,
-                 lambda_inner: float = 0.02,
-                 lambda_outer: float = 0.02) -> None:
+                state_low_energy: State,   # typically the ground state
+                state_high_energy: State,  # typically the excited or CT state
+                transition_type: TransitionType = TransitionType.RECOMBINATION,
+                oscillator_strength: float = 1,
+                dipole_moment: float = 1,
+                lambda_inner: float = 0.02,
+                lambda_outer: float = 0.02) -> None:
+                
+        if state_low_energy is None or state_high_energy is None:
+            raise ValueError("Two valid states must be given.")
         
-        if state_a is None:
-            raise ValueError("State A cannot be None.")
-        if state_b is None:
-            raise ValueError("State B cannot be None.")
+        self.transition_type: TransitionType = transition_type
+        self.state_low_energy: State = state_low_energy
+        self.state_high_energy: State = state_high_energy
         
-        self.state_a: State = state_a
-        self.state_b: State = state_b
-        
-        # Calculate the energy difference: Energy B - Energy A
-        self.energy_difference: float = state_b.energy - state_a.energy
+        # Calculate the energy difference: High and low energy state
+        self.energy_difference: float = state_high_energy.energy - state_low_energy.energy
         self.oscillator_strength: float = oscillator_strength
         self.dipole_moment: float = dipole_moment
         
@@ -44,14 +45,14 @@ class Transition:
     
     @property
     def huang_rhys(self):
-        # Huang Rhys
-        if self.state_b.hW != 0:
-            self.huang_rhys: float = self.lambda_inner / self.state_b.hW
+        """Calculate the Huang Rhys Factor."""
+        if self.state_high_energy.hW != 0:
+            return self.lambda_inner / self.state_high_energy.hW
         else:
-            self.huang_rhys: float = 0.0
+            raise ValueError("state_high_energy.hW must not be zero when computing Huang-Rhys.")
     
 
     def __repr__(self) -> str:
-        return (f"Transition(State A='{self.state_a.name}', State B='{self.state_b.name}', "
-                f"Energy Diff={self.energy_difference:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+        return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
+                f"Energy Difference={self.energy_difference:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
 
