@@ -12,7 +12,7 @@ def test_transition_energy():
 
     ground_state = State()
     excited_state = State("LE",energy=1.5)
-    
+
     transition1 = Transition(state_low_energy=ground_state, state_high_energy=excited_state)
     transition2 = Transition(excited_state, ground_state)
     transition3 = Transition(excited_state)
@@ -41,7 +41,7 @@ def test_huang_rhys():
 
     ground_state = State()
     excited_state = State("LE",energy=1.5)
-    
+
     transition = Transition(ground_state, excited_state)
-    huang_rhys = transition.lambda_inner / excited_state.hW
+    huang_rhys = transition.lambda_inner / excited_state.vib_spacing
     assert huang_rhys == transition.huang_rhys
