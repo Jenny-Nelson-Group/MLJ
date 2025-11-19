@@ -2,7 +2,7 @@
 #####################################################################################
 # MLJ Package
 #
-# Classes containing core parameters of quantum states. 
+# Classes containing core parameters of quantum states.
 # Author: Jolanda S Müller, Tim Rein, Imperial College London
 # Copyright (c) 2025, Imperial College London, BSD 3-Clause License
 # Date: November 2025
@@ -27,32 +27,31 @@ class Transition:
                 dipole_moment: float = 1,
                 lambda_inner: float = 0.02,
                 lambda_outer: float = 0.02) -> None:
-                
+
         if state_low_energy is None or state_high_energy is None:
             raise ValueError("Two valid states must be given.")
-        
+
         self.transition_type: TransitionType = transition_type
         self.state_low_energy: State = state_low_energy
         self.state_high_energy: State = state_high_energy
-        
+
         # Calculate the energy difference: High and low energy state
         self.energy_difference: float = state_high_energy.energy - state_low_energy.energy
         self.oscillator_strength: float = oscillator_strength
         self.dipole_moment: float = dipole_moment
-        
+
         self.lambda_inner: float = lambda_inner
         self.lambda_outer: float = lambda_outer
-    
+
     @property
     def huang_rhys(self):
         """Calculate the Huang Rhys Factor."""
-        if self.state_high_energy.hW != 0:
-            return self.lambda_inner / self.state_high_energy.hW
+        if self.state_high_energy.vib_spacing != 0:
+            return self.lambda_inner / self.state_high_energy.vib_spacing
         else:
-            raise ValueError("state_high_energy.hW must not be zero when computing Huang-Rhys.")
-    
+            raise ValueError("state_high_energy.vib_spacing must not be zero when computing Huang-Rhys.")
+
 
     def __repr__(self) -> str:
         return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
                 f"Energy Difference={self.energy_difference:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
-
