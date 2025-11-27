@@ -20,8 +20,8 @@ class TransitionType(Enum):
 class Transition:
     """Represents a transition between two quantum states."""
     def __init__(self,
-                state_low_energy: State,   # typically the ground state
                 state_high_energy: State,  # typically the excited or CT state
+                state_low_energy: State = State(),   # default to Ground State with Energy 0
                 transition_type: TransitionType = TransitionType.RECOMBINATION,
                 oscillator_strength: float = 1,
                 dipole_moment: float = 1,
@@ -32,11 +32,16 @@ class Transition:
             raise ValueError("Two valid states must be given.")
 
         self.transition_type: TransitionType = transition_type
-        self.state_low_energy: State = state_low_energy
-        self.state_high_energy: State = state_high_energy
+
+        if state_high_energy.energy > state_low_energy.energy:
+            self.state_low_energy: State = state_low_energy
+            self.state_high_energy: State = state_high_energy
+        else:
+            self.state_low_energy: State = state_high_energy
+            self.state_high_energy: State = state_low_energy
 
         # Calculate the energy difference: High and low energy state
-        self.energy_difference: float = state_high_energy.energy - state_low_energy.energy
+        self.energy_difference: float = self.state_high_energy.energy - self.state_low_energy.energy
         self.oscillator_strength: float = oscillator_strength
         self.dipole_moment: float = dipole_moment
 
