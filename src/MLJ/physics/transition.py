@@ -78,4 +78,4 @@ class Transition:
 
     def __repr__(self) -> str:
         return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
-                f"Energy Difference={self.energy_difference:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")

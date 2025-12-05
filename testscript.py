@@ -19,14 +19,9 @@ fcwd_values_abs = fcwd(energies, abs)
 fcwd_values_rec = fcwd(energies, rec)
 
 x= energies
-y_abs=fcwd_values_abs
-y_abs = y_abs.reshape(res, 2)
+y_abs = fcwd_values_abs[:,0,0]
+y_rec = fcwd_values_rec[:,0,0]
 
-y_rec=fcwd_values_rec
-y_rec = y_rec.reshape(res, 2)
-
-plt.plot(x, y_abs[:, 0])
-#plt.plot(x, y_abs[:, 1])
-plt.plot(x, y_rec[:, 0])
-#plt.plot(x, y_rec[:, 1])
+plt.plot(x, y_abs)
+plt.plot(x, y_rec)
 plt.show()

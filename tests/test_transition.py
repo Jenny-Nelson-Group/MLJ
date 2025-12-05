@@ -57,3 +57,13 @@ def test_huang_rhys():
     transition = Transition(ground_state, excited_state)
     huang_rhys = transition.lambda_inner / excited_state.vib_spacing
     assert huang_rhys == transition.huang_rhys
+
+def test_repr():
+    from MLJ.physics.state import State
+    from MLJ.physics.transition import Transition
+
+    ground_state = State()
+    excited_state = State("LE",energy=1.5)
+
+    transition = Transition(ground_state, excited_state)
+    assert isinstance(repr(transition), str)
