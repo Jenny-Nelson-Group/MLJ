@@ -11,6 +11,7 @@
 from typing import Callable, Any, Optional
 from MLJ.physics.state import State
 from enum import Enum
+import numpy as np
 
 class TransitionType(Enum):
     """Enum class to distinguish the different transition types."""
@@ -33,6 +34,17 @@ class Transition:
 
         self.transition_type: TransitionType = transition_type
 
+        self.determine_high_low_energy_state(state_low_energy, state_high_energy)
+        self.set_gibbs_energies()
+
+        self.oscillator_strength: float = oscillator_strength
+        self.dipole_moment: float = dipole_moment
+
+        self.lambda_inner: float = lambda_inner
+        self.lambda_outer: float = lambda_outer
+
+    def determine_high_low_energy_state(self, state_low_energy, state_high_energy):
+        """Assign which state is the higher energy state and which state is the lower energy state."""
         if state_high_energy.energy > state_low_energy.energy:
             self.state_low_energy: State = state_low_energy
             self.state_high_energy: State = state_high_energy
@@ -40,13 +52,20 @@ class Transition:
             self.state_low_energy: State = state_high_energy
             self.state_high_energy: State = state_low_energy
 
-        # Calculate the energy difference: High and low energy state
-        self.energy_difference: float = self.state_high_energy.energy - self.state_low_energy.energy
-        self.oscillator_strength: float = oscillator_strength
-        self.dipole_moment: float = dipole_moment
+    def set_gibbs_energies(self):
+        """"""
+        self.mean_gibbs_energy: float = self.state_high_energy.energy - self.state_low_energy.energy
 
-        self.lambda_inner: float = lambda_inner
-        self.lambda_outer: float = lambda_outer
+        cut_off = self.state_high_energy.disorder_integration_cut_off * self.state_high_energy.disorder_sigma
+        self.gibbs_energies = np.linspace(self.mean_gibbs_energy - cut_off, self.mean_gibbs_energy + cut_off, self.state_high_energy.disorder_number_of_states)
+
+    def set_type_absorption(self):
+        self.transition_type = TransitionType.ABSORPTION
+        return self
+
+    def set_type_recombination(self):
+        self.transition_type = TransitionType.RECOMBINATION
+        return self
 
     @property
     def huang_rhys(self):
