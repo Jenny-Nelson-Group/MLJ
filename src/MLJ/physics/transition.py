@@ -8,7 +8,6 @@
 # Date: November 2025
 #####################################################################################
 
-from typing import Callable, Any, Optional
 from MLJ.physics.state import State
 from enum import Enum
 import numpy as np
@@ -53,19 +52,26 @@ class Transition:
             self.state_high_energy: State = state_low_energy
 
     def set_gibbs_energies(self):
-        """"""
+        """Calculate the spread of energies based on the disorder."""
         self.mean_gibbs_energy: float = self.state_high_energy.energy - self.state_low_energy.energy
 
         cut_off = self.state_high_energy.disorder_integration_cut_off * self.state_high_energy.disorder_sigma
         self.gibbs_energies = np.linspace(self.mean_gibbs_energy - cut_off, self.mean_gibbs_energy + cut_off, self.state_high_energy.disorder_number_of_states)
 
     def set_type_absorption(self):
+        """Set the transition type to Absorption."""
         self.transition_type = TransitionType.ABSORPTION
         return self
 
     def set_type_recombination(self):
+        """Set the transition type to Recombination."""
         self.transition_type = TransitionType.RECOMBINATION
         return self
+
+    @property
+    def disorder_distribution(self):
+        """Return the disorder distribution of the high energy state."""
+        return self.state_high_energy.disorder_distribution
 
     @property
     def huang_rhys(self):
@@ -75,7 +81,6 @@ class Transition:
         else:
             raise ValueError("state_high_energy.vib_spacing must not be zero when computing Huang-Rhys.")
 
-
     def __repr__(self) -> str:
         return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
-                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f}), Type={self.transition_type}")
