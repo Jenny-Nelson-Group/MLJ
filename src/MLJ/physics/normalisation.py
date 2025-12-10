@@ -11,7 +11,7 @@
 
 from MLJ.physics.transition import TransitionType
 from MLJ.physics.transition import Transition
-from MLJ.physics.basics import boltzmann
+from MLJ.physics.basics import boltzmann, integral
 import numpy as np
 from typing import Sequence
 
@@ -20,18 +20,21 @@ def partition_function(transition: Transition) -> Sequence[float]:
     """Return the normalisation factor from the integrated partition function for each temperature."""
 
     temperatures = np.array([300.0,200.0])
+    gibbs_energies = transition.gibbs_energies
 
-    disorder_energies = transition.disorder_distribution(
-                x = transition.gibbs_energies,
+    weights = transition.disorder_distribution(
+                x = gibbs_energies,
                 mean = transition.mean_gibbs_energy,
                 sigma = transition.state_high_energy.disorder_sigma
                 )
+    
     if (transition.transition_type == TransitionType.RECOMBINATION):
-        boltzmann_factor = boltzmann(transition.gibbs_energies, temperatures)
+        boltzmann_factor = boltzmann(gibbs_energies, temperatures)
     else:
-        boltzmann_factor = 1
+        boltzmann_factor = np.ones(len(temperatures))
 
-    integrand = disorder_energies[:, None] * boltzmann_factor
-    partition_function = np.trapezoid(integrand, x=transition.gibbs_energies, axis=0)
+    integrand = weights[:, None] * boltzmann_factor
+
+    partition_function  = integral(y=integrand, x=gibbs_energies)
 
     return partition_function
