@@ -1,5 +1,7 @@
 # tests/test_transition.py
 
+import numpy as np
+
 def test_import_transition():
     from MLJ.physics.transition import Transition
     from MLJ.physics.transition import TransitionType
@@ -67,3 +69,17 @@ def test_repr():
 
     transition = Transition(ground_state, excited_state)
     assert isinstance(repr(transition), str)
+
+
+def test_edge_case_no_disorder():
+    """Test that without disorder the gibbs_energies contain only one value equal to the mean."""
+    from MLJ.physics.state import State
+    from MLJ.physics.transition import Transition
+
+    ground_state = State()
+    excited_state = State("LE",energy=1.5,disorder_sigma=0)
+
+    transition = Transition(ground_state, excited_state)
+    assert len(transition.gibbs_energies) == 1
+    assert transition.gibbs_energies[0] == transition.mean_gibbs_energy
+    assert transition.disorder_distribution(np.array([1.5]),5,5) == np.array([1])
