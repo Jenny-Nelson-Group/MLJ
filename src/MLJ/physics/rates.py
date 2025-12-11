@@ -26,7 +26,7 @@ def absorption_spectral(energies, transition):
 
     fcwd_abs = fcwd.fcwd_abs(energies, transition.set_type_absorption())
 
-    rad_coupling = cpl.coupling_strength_rad(transition)
+    rad_coupling = cpl.coupling_strength_rad(transition)  # plan: I can also add this as a tuneable property of transition, like the disorder distribution in states
 
     normalisation = partition_function(transition)
 
@@ -88,3 +88,7 @@ def k_non_radiative_total(energies, transition):
     k_nonradiative = 1/normalisation * prefactor * integral(y=integrand, x=transition.gibbs_energy_grid, axis=0)
 
     return k_nonradiative
+
+def k_recombination_total(energies, transition):
+    return k_non_radiative_total(energies, transition) + k_radiative_total(energies, transition)
+
