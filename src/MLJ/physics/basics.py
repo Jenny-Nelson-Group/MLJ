@@ -27,8 +27,8 @@ def boltzmann(energy, temperature):
         -energy[:, None] / (temperature[None, :] * const.BOLTZMANN_CONSTANT_EV)
     )
 
-def integral(y, x):
+def integral(y, x, axis=0):
     if y.shape[0] == 1:
         return y[0]
     
-    return np.trapezoid(y, x=x, axis=0)
+    return np.trapezoid(y, x=x, axis=axis)
