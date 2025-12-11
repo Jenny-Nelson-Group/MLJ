@@ -16,11 +16,13 @@ import MLJ.physics.coupling as cpl
 import MLJ.physics.basics as integral
 import numpy as np
 
+PREFACTOR_ABS_REC = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_SI*const.REDUCED_PLANCK_CONSTANT_EVS**4)
+
 def absorption_spectral(energies, transition):
     """Calculate spectral rates of absorption of a transition based on the coupling function."""
     # e.g. coupling for absoption is radiative coupling "M = sqrt(f_osc ... )
 
-    refractive_index = 3
+    photon_density = 1
 
     transition.set_type_absorption()
 
@@ -30,12 +32,11 @@ def absorption_spectral(energies, transition):
 
     normalisation = partition_function(transition)
 
-    prefactor_1 = 1/(6*const.VACUUM_PERMITTIVITY_SI*const.REDUCED_PLANCK_CONSTANT_EVS) 
-    prefactor_2 = energies * refractive_index/const.SPEED_OF_LIGHT
+    prefactor_2 = (energies/const.SPEED_OF_LIGHT)**3
 
     integrand = rad_coupling * fcwd_abs * transition.disorder_weights
 
-    k_absorption = 1/normalisation * prefactor_1 * prefactor_2 * integral(y=integrand, x=transition.gibbs_energy_grid) # array of length(energies)
+    k_absorption = 1/normalisation * PREFACTOR_ABS_REC * prefactor_2 * integral(y=integrand, x=transition.gibbs_energy_grid) # array of length(energies)
 
     return k_absorption
 
@@ -51,12 +52,11 @@ def k_radiative_spectral(energies, transition):
 
     normalisation = partition_function(transition)
 
-    prefactor_1 = 4/3/const.REDUCED_PLANCK_CONSTANT_EVS**4
     prefactor_2 = (energies/const.SPEED_OF_LIGHT)**3
 
     integrand = rad_coupling * fcwd_rec * transition.disorder_weights
 
-    k_radiative = 1/normalisation * prefactor_1 * prefactor_2 * integral(y=integrand, x=transition.gibbs_energy_grid) # array of length(energies)
+    k_radiative = 1/normalisation * PREFACTOR_ABS_REC * prefactor_2 * integral(y=integrand, x=transition.gibbs_energy_grid) # array of length(energies)
 
     return k_radiative
 
@@ -74,14 +74,14 @@ def k_non_radiative_total(energies, transition):
     # e.g. coupling for non radiative transition is e.g.  V = function of radiative coupling M (mullken hush approximation)
 
     transition.set_type_recombination()
-    
+
     fcwd_rec_0 = fcwd.fcwd_rec(energies=0, transition=transition)
 
     nonrad_coupling = cpl.coupling_strength_nrad(transition)
 
     normalisation = partition_function(transition)
 
-    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS    
+    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
 
     integrand = nonrad_coupling * fcwd_rec_0 * transition.disorder_weights
 
@@ -91,4 +91,3 @@ def k_non_radiative_total(energies, transition):
 
 def k_recombination_total(energies, transition):
     return k_non_radiative_total(energies, transition) + k_radiative_total(energies, transition)
-
