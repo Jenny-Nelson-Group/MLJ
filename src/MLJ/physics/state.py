@@ -8,7 +8,7 @@
 # Date: November 2025
 #####################################################################################
 
-from MLJ.physics.basics import gaussian
+from MLJ.physics.basics import dirac_delta, gaussian, gaussian_norm
 from typing import Callable
 import numpy as np
 
@@ -55,7 +55,7 @@ class State:
             disorder_sigma: float = 0.05,
             disorder_number_of_states: int = 21,
             disorder_integration_cut_off: float = 2.5,
-            disorder_distribution: DistributionFunction | None = None,
+            disorder_distribution: 'DistributionFunction | None' = None,
         ) -> None:
 
         self.index: int = index
@@ -66,15 +66,40 @@ class State:
         self.disorder_integration_cut_off = disorder_integration_cut_off
 
         if (disorder_number_of_states == 1 or disorder_sigma == 0):
-            self.disorder_number_of_states: int = 1
-            self.disorder_sigma: float = 0
-            self.disorder_distribution: DistributionFunction = lambda x, mean, sigma: np.ones_like(x, dtype=float)
+            self.disorder_number_of_states= 1
+            self.disorder_sigma = 0
+            self.disorder_distribution = single_value
         else:
             self.disorder_sigma = disorder_sigma
             self.disorder_number_of_states = disorder_number_of_states
-            self.disorder_distribution: DistributionFunction = (
-                gaussian if disorder_distribution is None else disorder_distribution
+            self.disorder_distribution = (
+                gaussian_distribution if disorder_distribution is None else disorder_distribution
             )
+
+        self.energy_grid: np.ndarray = self.set_disorder_grid()
+        self.disorder_weights = self.set_disorder_weights()
+
+    def set_disorder_grid(self) -> np.ndarray:
+        cut_off = self.disorder_integration_cut_off * self.disorder_sigma
+        energy_grid = np.linspace(self.energy - cut_off, self.energy + cut_off, self.disorder_number_of_states)
+        return energy_grid
+    
+    def set_disorder_weights(self) -> np.ndarray:
+        energy_grid = self.energy_grid
+        weights = self.disorder_distribution(state=self, x=energy_grid)
+        return weights
 
     def __repr__(self) -> str:
         return f"State(Name='{self.name}', Energy={self.energy:.4f} eV)"
+
+DistributionFunction = Callable[[State, np.ndarray], np.ndarray]
+
+def single_value(state: State, x: np.ndarray) -> np.ndarray:
+    return np.ones_like(x, dtype=float)
+
+def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
+    """
+    Default energetic disorder distribution: Gaussian around `state.energy`
+    with width `state.disorder_sigma`.
+    """
+    return gaussian_norm(x, state.energy, state.disorder_sigma)

@@ -34,7 +34,7 @@ class Transition:
         self.transition_type: TransitionType = transition_type
 
         self.determine_high_low_energy_state(state_low_energy, state_high_energy)
-        self.set_gibbs_energies()
+        self.set_gibbs_energy_grid()
 
         self.oscillator_strength: float = oscillator_strength
         self.dipole_moment: float = dipole_moment
@@ -51,12 +51,14 @@ class Transition:
             self.state_low_energy: State = state_high_energy
             self.state_high_energy: State = state_low_energy
 
-    def set_gibbs_energies(self):
+    def set_gibbs_energy_grid(self):
         """Calculate the spread of energies based on the disorder."""
         self.mean_gibbs_energy: float = self.state_high_energy.energy - self.state_low_energy.energy
-
-        cut_off = self.state_high_energy.disorder_integration_cut_off * self.state_high_energy.disorder_sigma
-        self.gibbs_energies = np.linspace(self.mean_gibbs_energy - cut_off, self.mean_gibbs_energy + cut_off, self.state_high_energy.disorder_number_of_states)
+        self.gibbs_energy_grid = self.state_high_energy.energy_grid - self.state_low_energy.energy
+    
+    @property
+    def disorder_weights(self):
+        return self.state_high_energy.disorder_weights
 
     def set_type_absorption(self):
         """Set the transition type to Absorption."""

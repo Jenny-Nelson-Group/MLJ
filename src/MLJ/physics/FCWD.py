@@ -41,7 +41,7 @@ def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[f
     # --- Load constants and transition parameters ---
     temperature = np.array([300.0,200.0])
     outer_reorganisation_energy = transition.lambda_outer        # outer reorganization energy
-    gibbs_energies = transition.gibbs_energies     # free energy difference (Array of energies if we consider disorder) (eV)
+    gibbs_energy_grid = transition.gibbs_energy_grid     # free energy difference (Array of energies if we consider disorder) (eV)
     huang_rhys = transition.huang_rhys            # Huang–Rhys factor (contains the inner reorganisation energy)
     vib_spacing = transition.state_high_energy.vib_spacing        # vibrational quantum (hΩ) (eV)
     boltzmann_eV = const.BOLTZMANN_CONSTANT_EV
@@ -61,10 +61,10 @@ def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[f
     v_f = np.arange(N_vib_final + 1)
 
     # Build 5D meshgrid to enable vectorization of the calculations
-    v_i_mat, v_f_mat, photon_energies_mat, gibbs_energies_mat, temperature_mat = np.meshgrid(
+    v_i_mat, v_f_mat, photon_energies_mat, gibbs_energy_grid_mat, temperature_mat = np.meshgrid(
         v_i, v_f,
         photon_energies,
-        gibbs_energies,
+        gibbs_energy_grid,
         temperature,
         indexing='ij')
 
@@ -92,7 +92,7 @@ def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[f
     # Exponential
     sign = 1 if transition_type is TransitionType.ABSORPTION else -1
     factor2 = (np.exp(
-            -(-sign*photon_energies_mat + sign*gibbs_energies_mat + outer_reorganisation_energy + vib_diff * vib_spacing) ** 2
+            -(-sign*photon_energies_mat + sign*gibbs_energy_grid_mat + outer_reorganisation_energy + vib_diff * vib_spacing) ** 2
             / (4 * outer_reorganisation_energy * boltzmann_eV * temperature_mat)
         ))
 
