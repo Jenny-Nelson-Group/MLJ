@@ -14,6 +14,13 @@ def gaussian_norm(x, mean, sigma):
         return np.array([1.0])
     return (1.0 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / sigma)**2)
 
+def dirac_delta(num: int, pos=0):
+    """"""
+    weights = np.zeros(num)
+    delta_index = round((pos+1)/2 * (num-1))
+    weights[delta_index] = 1
+    return weights
+
 
 def boltzmann(energy, temperature):
     return np.exp(
