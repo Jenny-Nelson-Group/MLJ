@@ -5,10 +5,11 @@ from MLJ.physics.basics import gaussian_norm, gaussian
 from MLJ.physics.normalisation import partition_function
 import matplotlib.pyplot as plt
 import numpy as np
+from MLJ.physics.state import gaussian_distribution
 
 
 model_implementation = "Znorm: trapz, normgauss, cut_off=scales"
-distr = gaussian_norm
+distr = gaussian_distribution
 
 for i in [1,2,3]:
     situation = i
@@ -21,10 +22,9 @@ for i in [1,2,3]:
         case 3:
             test_range=np.linspace(0.1,5,99) # cut off
 
-    sigma_fix = 0
+    sigma_fix = 0.2
     nr_fix = 21
     cut_off_fix = 2.5
-
 
     for x in test_range:
         ground_state = State(energy=0.0, disorder_number_of_states=3, disorder_sigma=0.1)
@@ -37,14 +37,13 @@ for i in [1,2,3]:
             case 3:
                 excited_state = State(energy=1.5, disorder_number_of_states=nr_fix, disorder_sigma=sigma_fix, disorder_integration_cut_off=x, disorder_distribution=distr)
 
-        transition = Transition(state_low_energy=ground_state, state_high_energy=excited_state, transition_type = TransitionType.ABSORPTION)
+        transition = Transition(state_low_energy=ground_state, state_high_energy=excited_state, transition_type = TransitionType.RECOMBINATION)
         Znorm_abs = partition_function(transition=transition)
         Znorm.append(Znorm_abs)
 
 
     plt.plot(test_range, Znorm)
     plt.ylabel(model_implementation)
-    print(Znorm)
 
     match situation:
         case 1:
