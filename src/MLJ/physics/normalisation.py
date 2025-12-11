@@ -8,19 +8,19 @@
 # Date: November 2025
 #####################################################################################
 
-
-from MLJ.physics.transition import TransitionType
-from MLJ.physics.transition import Transition
+from MLJ.physics.transition import TransitionType, Transition
 from MLJ.physics.basics import boltzmann, integral
+from MLJ.physics.config import config
 import numpy as np
 from typing import Sequence
 
-
-def partition_function(transition: Transition) -> Sequence[float]:
+def partition_function(transition: Transition,
+                       temperatures: np.ndarray = None,
+                       ) -> Sequence[float]:
     """Return the normalisation factor from the integrated partition function for each temperature."""
 
-    temperatures = np.array([300.0, 200.0])
-    
+    temperatures = config.temperatures_K if temperatures is None else temperatures
+
     if (transition.transition_type == TransitionType.RECOMBINATION):
         boltzmann_factor = boltzmann(transition.gibbs_energy_grid, temperatures)
     else:

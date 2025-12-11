@@ -11,12 +11,15 @@
 import numpy as np
 from scipy.special import factorial, genlaguerre
 from typing import Sequence
-
+from MLJ.physics.config import config
 from MLJ.physics.transition import TransitionType
 from MLJ.physics.transition import Transition
 import MLJ.physics.constants as const
 
-def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[float]:
+def fcwd(photon_energies: Sequence[float],
+         transition: Transition,
+         temperatures: np.ndarray = None,
+         ) -> Sequence[float]:
     """
     Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
     For reference formula see: https://journals.aps.org/prx/pdf/10.1103/PhysRevX.8.031055 eq. 8
@@ -38,8 +41,9 @@ def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[f
         FCWD evaluated at each photon energy (averaged over vibronic states).
     """
 
+    temperatures = config.temperatures_K if temperatures is None else temperatures
+
     # --- Load constants and transition parameters ---
-    temperature = np.array([300.0,200.0])
     outer_reorganisation_energy = transition.lambda_outer        # outer reorganization energy
     gibbs_energy_grid = transition.gibbs_energy_grid     # free energy difference (Array of energies if we consider disorder) (eV)
     huang_rhys = transition.huang_rhys            # Huang–Rhys factor (contains the inner reorganisation energy)
@@ -65,7 +69,7 @@ def fcwd(photon_energies: Sequence[float], transition: Transition) -> Sequence[f
         v_i, v_f,
         photon_energies,
         gibbs_energy_grid,
-        temperature,
+        temperatures,
         indexing='ij')
 
     vib_diff = v_f_mat - v_i_mat
