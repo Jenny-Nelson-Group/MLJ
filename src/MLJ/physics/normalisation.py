@@ -8,9 +8,26 @@
 # Date: November 2025
 #####################################################################################
 
+from MLJ.physics.transition import TransitionType, Transition
+from MLJ.physics.basics import boltzmann, integral
+from MLJ.physics.config import config
+import numpy as np
+from typing import Sequence
 
-def Zabs():
-    return 1
+def partition_function(transition: Transition,
+                       temperatures: np.ndarray = None,
+                       ) -> Sequence[float]:
+    """Return the normalisation factor from the integrated partition function for each temperature."""
 
-def Zrec():
-    return 1
+    temperatures = config.temperatures_K if temperatures is None else temperatures
+
+    if (transition.transition_type == TransitionType.RECOMBINATION):
+        boltzmann_factor = boltzmann(transition.gibbs_energy_grid, temperatures)
+    else:
+        boltzmann_factor = np.ones(len(temperatures))
+
+    integrand = transition.disorder_weights[:, None] * boltzmann_factor
+
+    partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid)
+
+    return partition_function

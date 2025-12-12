@@ -8,9 +8,9 @@
 # Date: November 2025
 #####################################################################################
 
-from typing import Callable, Any, Optional
 from MLJ.physics.state import State
 from enum import Enum
+import numpy as np
 
 class TransitionType(Enum):
     """Enum class to distinguish the different transition types."""
@@ -33,6 +33,17 @@ class Transition:
 
         self.transition_type: TransitionType = transition_type
 
+        self.determine_high_low_energy_state(state_low_energy, state_high_energy)
+        self.set_gibbs_energy_grid()
+
+        self.oscillator_strength: float = oscillator_strength
+        self.dipole_moment: float = dipole_moment
+
+        self.lambda_inner: float = lambda_inner
+        self.lambda_outer: float = lambda_outer
+
+    def determine_high_low_energy_state(self, state_low_energy, state_high_energy):
+        """Assign which state is the higher energy state and which state is the lower energy state."""
         if state_high_energy.energy > state_low_energy.energy:
             self.state_low_energy: State = state_low_energy
             self.state_high_energy: State = state_high_energy
@@ -40,13 +51,29 @@ class Transition:
             self.state_low_energy: State = state_high_energy
             self.state_high_energy: State = state_low_energy
 
-        # Calculate the energy difference: High and low energy state
-        self.energy_difference: float = self.state_high_energy.energy - self.state_low_energy.energy
-        self.oscillator_strength: float = oscillator_strength
-        self.dipole_moment: float = dipole_moment
+    def set_gibbs_energy_grid(self):
+        """Calculate the spread of energies based on the disorder."""
+        self.mean_gibbs_energy: float = self.state_high_energy.energy - self.state_low_energy.energy
+        self.gibbs_energy_grid = self.state_high_energy.energy_grid - self.state_low_energy.energy
+    
+    @property
+    def disorder_weights(self):
+        return self.state_high_energy.disorder_weights
 
-        self.lambda_inner: float = lambda_inner
-        self.lambda_outer: float = lambda_outer
+    def set_type_absorption(self):
+        """Set the transition type to Absorption."""
+        self.transition_type = TransitionType.ABSORPTION
+        return self
+
+    def set_type_recombination(self):
+        """Set the transition type to Recombination."""
+        self.transition_type = TransitionType.RECOMBINATION
+        return self
+
+    @property
+    def disorder_distribution(self):
+        """Return the disorder distribution of the high energy state."""
+        return self.state_high_energy.disorder_distribution
 
     @property
     def huang_rhys(self):
@@ -56,7 +83,6 @@ class Transition:
         else:
             raise ValueError("state_high_energy.vib_spacing must not be zero when computing Huang-Rhys.")
 
-
     def __repr__(self) -> str:
         return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
-                f"Energy Difference={self.energy_difference:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f}), Type={self.transition_type}")
