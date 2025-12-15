@@ -26,6 +26,6 @@ def partition_function(transition: Transition,
 
     integrand = transition.disorder_weights[:, None] * boltzmann_factor
 
-    partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid)
+    partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid, axis=0)
 
     return partition_function
