@@ -15,11 +15,9 @@ import numpy as np
 from typing import Sequence
 
 def partition_function(transition: Transition,
-                       temperatures: np.ndarray = None,
+                       temperatures: np.ndarray,
                        ) -> Sequence[float]:
     """Return the normalisation factor from the integrated partition function for each temperature."""
-
-    temperatures = config.temperatures_K if temperatures is None else temperatures
 
     if (transition.transition_type == TransitionType.RECOMBINATION):
         boltzmann_factor = boltzmann(transition.gibbs_energy_grid, temperatures)

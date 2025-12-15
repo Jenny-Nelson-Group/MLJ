@@ -18,7 +18,7 @@ import MLJ.physics.constants as const
 
 def fcwd(photon_energies: Sequence[float],
          transition: Transition,
-         temperatures: np.ndarray = None,
+         temperatures: np.ndarray,
          ) -> Sequence[float]:
     """
     Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
@@ -40,8 +40,6 @@ def fcwd(photon_energies: Sequence[float],
     fcwd : array, shape(N_omegas,N_disorder_energies,N_temperatures)
         FCWD evaluated at each photon energy (averaged over vibronic states).
     """
-
-    temperatures = config.temperatures_K if temperatures is None else temperatures
 
     # --- Load constants and transition parameters ---
     outer_reorganisation_energy = transition.lambda_outer        # outer reorganization energy
