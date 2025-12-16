@@ -18,9 +18,11 @@ def coupling_strength_rad(transition) -> float:
     E_mid = transition.mean_gibbs_energy
     hW = transition.state_high_energy.vib_spacing
 
-    M = np.sqrt((3/2) * ((const.REDUCED_PLANCK_CONSTANT_EVS**2) * f_osc)  /  ((E_mid - hW) * const.ELECTRON_MASS))
-
-    return M
+    transition_dipole_moment = np.sqrt((3/2) 
+                                       * (const.REDUCED_PLANCK_CONSTANT_EVS**2) * f_osc
+                                       /  ((E_mid - hW) * const.ELECTRON_MASS)
+                                       )
+    return transition_dipole_moment
 
 
 def coupling_strength_nrad(transition) -> float:
@@ -31,8 +33,7 @@ def coupling_strength_nrad(transition) -> float:
     E_mid = transition.mean_gibbs_energy
     dmu = transition.dipole_moment
 
-    non_rad_coupling = (rad_coupling * E_mid) / np.sqrt(np.absolute(dmu**2 - 4*rad_coupling**2))
-
+    non_rad_coupling = (rad_coupling * E_mid) / np.sqrt(dmu**2 + 4*rad_coupling**2)
     return non_rad_coupling
 
 
