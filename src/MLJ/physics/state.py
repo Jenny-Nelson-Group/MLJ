@@ -103,3 +103,10 @@ def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
     with width `state.disorder_sigma`.
     """
     return gaussian_norm(x, state.energy, state.disorder_sigma)
+
+def gaussian_distribution_nonnorm(state: State, x: np.ndarray) -> np.ndarray:
+    """
+    Default energetic disorder distribution: Gaussian around `state.energy`
+    with width `state.disorder_sigma`.
+    """
+    return gaussian(x, state.energy, state.disorder_sigma)
