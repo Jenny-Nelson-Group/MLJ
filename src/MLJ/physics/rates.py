@@ -15,7 +15,7 @@ from MLJ.physics.config import config
 import MLJ.physics.FCWD as fcwd
 import MLJ.physics.constants as const
 import MLJ.physics.coupling as cpl
-from MLJ.physics.basics import integral
+from MLJ.physics.basics import integral, boltzmann
 import numpy as np
 
 
@@ -60,16 +60,17 @@ def absorption_spectral(photon_energies, transition, temperatures, photon_densit
 def k_radiative_spectral(photon_energies, transition, temperatures):
     """Calculate spectral rates of radiative recombination of a transition based on the coupling function."""
     # e.g. coupling for absoption is "M = sqrt(f_osc ... )
+    # [photon_energies, disorder_energy_grid, temperatures]
     transition.set_type_recombination()
     fcwd_rec = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures)
     normalisation = partition_function(transition=transition,temperatures=temperatures)
     rad_coupling = cpl.coupling_strength_rad(transition)
     energy_part = (photon_energies/const.SPEED_OF_LIGHT)**3
-    integrand = rad_coupling * fcwd_rec * transition.disorder_weights[None, :, None]
-    print(integrand.shape)
+    boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])
+
+    integrand = rad_coupling * fcwd_rec * transition.disorder_weights[None, :, None] * boltzmann_factor
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
-
-
+    
     k_radiative = _prefactor_abs_rec * 1/normalisation[None,:] * energy_part[:,None] * integrated_over_disorder
     return k_radiative
 
@@ -88,8 +89,11 @@ def k_non_radiative_total(transition, temperatures):
     fcwd_rec_0 = fcwd.fcwd(photon_energies=0, transition=transition, temperatures=temperatures)
     nonrad_coupling = cpl.coupling_strength_nrad(transition)
     normalisation = partition_function(transition=transition,temperatures=temperatures)
-    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
-    integrand = nonrad_coupling * fcwd_rec_0 * transition.disorder_weights[None, :, None]
+    
+    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS # correct
+
+    
+    integrand = nonrad_coupling**2 * fcwd_rec_0 * transition.disorder_weights[None, :, None]
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
 
     k_nonradiative = 1/normalisation[None,:] * prefactor * integrated_over_disorder

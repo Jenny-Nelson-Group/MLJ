@@ -18,11 +18,14 @@ def partition_function(transition: Transition,
                        temperatures: np.ndarray,
                        ) -> Sequence[float]:
     """Return the normalisation factor from the integrated partition function for each temperature."""
-
+    
     if (transition.transition_type == TransitionType.RECOMBINATION):
-        boltzmann_factor = boltzmann(transition.gibbs_energy_grid, temperatures)
+        boltzmann_factor = boltzmann(
+        transition.gibbs_energy_grid[:, None],
+        temperatures[None, :]
+    )
     else:
-        boltzmann_factor = np.ones(len(temperatures))
+        boltzmann_factor = np.ones((1, len(temperatures)))
 
     integrand = transition.disorder_weights[:, None] * boltzmann_factor
 
