@@ -15,6 +15,7 @@ from MLJ.physics.config import config
 from MLJ.physics.transition import TransitionType
 from MLJ.physics.transition import Transition
 import MLJ.physics.constants as const
+from MLJ.physics.basics import boltzmann, laguerre_2d
 
 def fcwd(photon_energies: Sequence[float],
          transition: Transition,
@@ -73,12 +74,7 @@ def fcwd(photon_energies: Sequence[float],
     vib_diff = v_f_mat - v_i_mat
 
     # 2D Laguerre table (v_i × v_f)
-    laguerre_base = np.zeros((N_vib_initial + 1, N_vib_final + 1))
-    for i in range(N_vib_initial + 1):
-        j = np.arange(i, N_vib_final + 1)
-        k = j - i
-        poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
-        laguerre_base[i, j] = poly
+    laguerre_base = laguerre_2d(N_vib_initial, N_vib_final, huang_rhys)
 
     # Now broadcast to the 5D meshgrid shape
     laguerre_mat = laguerre_base[:, :, None, None, None]
@@ -99,7 +95,7 @@ def fcwd(photon_energies: Sequence[float],
         ))
 
     # Boltzmann population of the initial state
-    factor3 = np.exp(-(v_i_mat * vib_spacing) / (boltzmann_eV * temperature_mat))
+    factor3 = boltzmann(energy=v_i_mat * vib_spacing, temperature=temperature_mat)
 
     normalisation = 1 / np.sqrt(4 * np.pi * outer_reorganisation_energy * boltzmann_eV  * temperature_mat)
     fcwd_n = normalisation * factor1 * factor2 * factor3

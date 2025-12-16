@@ -1,5 +1,18 @@
 import numpy as np
+from scipy.special import factorial, genlaguerre
 import MLJ.physics.constants as const
+
+
+def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
+    laguerre_base = np.zeros((N_vib_initial + 1, N_vib_final + 1))
+    for i in range(N_vib_initial + 1):
+        j = np.arange(i, N_vib_final + 1)
+        k = j - i
+        poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
+        laguerre_base[i, j] = poly
+    
+    return laguerre_base
+
 
 def gaussian(x, mean, sigma):
     """Returns non-normalised Gaussian or 1 if sigma is 0."""
@@ -21,10 +34,10 @@ def dirac_delta(num: int, pos=0):
     weights[delta_index] = 1
     return weights
 
-
 def boltzmann(energy, temperature):
+    """Calculate the Boltzmann factor with NumPy broadcasting."""
     return np.exp(
-        -energy[:, None] / (temperature[None, :] * const.BOLTZMANN_CONSTANT_EV)
+        -energy / (temperature * const.BOLTZMANN_CONSTANT_EV)
     )
 
 def integral(y, x, axis):
