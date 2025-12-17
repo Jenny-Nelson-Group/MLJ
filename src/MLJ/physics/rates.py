@@ -19,7 +19,7 @@ from MLJ.physics.basics import integral, boltzmann
 import numpy as np
 
 
-_prefactor_abs_rec = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_SI*const.REDUCED_PLANCK_CONSTANT_EVS**4)
+_prefactor_abs_rec = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_EV*const.REDUCED_PLANCK_CONSTANT_EVS**4)
 class Rates:
     def __init__(self,
             transition: Transition,
@@ -70,8 +70,14 @@ def k_radiative_spectral(photon_energies, transition, temperatures):
 
     integrand = rad_coupling * fcwd_rec * transition.disorder_weights[None, :, None] * boltzmann_factor
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
-    
+
     k_radiative = _prefactor_abs_rec * 1/normalisation[None,:] * energy_part[:,None] * integrated_over_disorder
+
+    print("prefactor", _prefactor_abs_rec)
+    print("normalisation", 1/normalisation[None,:])
+    print("energypart", energy_part[:,None])
+    print("disorder integral", integrated_over_disorder)
+
     return k_radiative
 
 def k_radiative_total(photon_energies, transition, temperatures):
@@ -89,10 +95,10 @@ def k_non_radiative_total(transition, temperatures):
     fcwd_rec_0 = fcwd.fcwd(photon_energies=0, transition=transition, temperatures=temperatures)
     nonrad_coupling = cpl.coupling_strength_nrad(transition)
     normalisation = partition_function(transition=transition,temperatures=temperatures)
-    
+
     prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS # correct
 
-    
+
     integrand = nonrad_coupling**2 * fcwd_rec_0 * transition.disorder_weights[None, :, None]
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
 
