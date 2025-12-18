@@ -10,7 +10,7 @@ def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
         k = j - i
         poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
         laguerre_base[i, j] = poly
-    
+
     return laguerre_base
 
 
@@ -40,8 +40,11 @@ def boltzmann(energy, temperature):
         -energy / (temperature * const.BOLTZMANN_CONSTANT_EV)
     )
 
-def integral(y, x, axis):
+
+def integral(y, x=None, axis=-1):
+    y = np.asarray(y)
+
     if y.shape[axis] == 1:
-        return y[axis]
+        return np.squeeze(y, axis=axis)
 
     return np.trapezoid(y=y, x=x, axis=axis)

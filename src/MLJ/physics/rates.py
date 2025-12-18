@@ -68,16 +68,10 @@ def k_radiative_spectral(photon_energies, transition, temperatures):
     energy_part = (photon_energies/const.SPEED_OF_LIGHT)**3
     boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])
 
-    integrand = rad_coupling * fcwd_rec * transition.disorder_weights[None, :, None] * boltzmann_factor
+    integrand = rad_coupling**2 * fcwd_rec * transition.disorder_weights[None, :, None] * boltzmann_factor
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
 
     k_radiative = _prefactor_abs_rec * 1/normalisation[None,:] * energy_part[:,None] * integrated_over_disorder
-
-    print("prefactor", _prefactor_abs_rec)
-    print("normalisation", 1/normalisation[None,:])
-    print("energypart", energy_part[:,None])
-    print("disorder integral", integrated_over_disorder)
-
     return k_radiative
 
 def k_radiative_total(photon_energies, transition, temperatures):
@@ -96,10 +90,10 @@ def k_non_radiative_total(transition, temperatures):
     nonrad_coupling = cpl.coupling_strength_nrad(transition)
     normalisation = partition_function(transition=transition,temperatures=temperatures)
 
-    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS # correct
+    prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
+    boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])
 
-
-    integrand = nonrad_coupling**2 * fcwd_rec_0 * transition.disorder_weights[None, :, None]
+    integrand = nonrad_coupling**2 * fcwd_rec_0 * transition.disorder_weights[None, :, None] * boltzmann_factor
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
 
     k_nonradiative = 1/normalisation[None,:] * prefactor * integrated_over_disorder

@@ -12,17 +12,19 @@ import MLJ.physics.constants as const
 import numpy as np
 
 def coupling_strength_rad(transition) -> float:
-    """ Calculates the radiative coupling strength M of the transition."""
+    """ Calculates the radiative coupling strength M of the transition in units of [m]"""
 
     f_osc = transition.oscillator_strength
     E_mid = transition.mean_gibbs_energy
     hW = transition.state_high_energy.vib_spacing
 
-    transition_dipole_moment = np.sqrt((3/2) 
-                                       * (const.REDUCED_PLANCK_CONSTANT_EVS**2) * f_osc
-                                       /  ((E_mid - hW) * const.ELECTRON_MASS)
+    transition_dipole_moment = np.sqrt((3/2) * f_osc
+                                       * const.REDUCED_PLANCK_CONSTANT_JS  # J * s = kg m2 s-2 * s = kg m2 s-1
+                                       * const.REDUCED_PLANCK_CONSTANT_EVS # eV * s
+                                       / (E_mid - hW)                      # /eV
+                                       / const.ELECTRON_MASS               # /kg
                                        )
-    return transition_dipole_moment
+    return transition_dipole_moment                                        # m
 
 
 def coupling_strength_nrad(transition) -> float:
@@ -31,9 +33,10 @@ def coupling_strength_nrad(transition) -> float:
     rad_coupling = coupling_strength_rad(transition)
 
     E_mid = transition.mean_gibbs_energy
-    dmu = transition.dipole_moment
+    static_dipole_moment = transition.dipole_moment
 
-    non_rad_coupling = (rad_coupling * E_mid) / np.sqrt(dmu**2 + 4*rad_coupling**2)
+    non_rad_coupling = (rad_coupling * E_mid) / np.sqrt(static_dipole_moment**2 + 4*rad_coupling**2)
+
     return non_rad_coupling
 
 

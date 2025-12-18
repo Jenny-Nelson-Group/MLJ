@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from MLJ.physics.state import gaussian_distribution, gaussian_distribution_nonnorm
 
-temperatures = temperatures=np.array([100,150,200,250,300,400])
+temperatures = temperatures=np.array([50,100,150,200,250,300,350])
 res=200
 photon_energies = np.linspace(0.5, 2.5, res)
 
@@ -19,17 +19,18 @@ LE = State(name="Local Exciton",
            energy=1.35,
            number_of_vibronic_modes=5,
            vib_spacing=0.15,
-           disorder_sigma=0.1,
-           disorder_number_of_states=5,
+           disorder_sigma=0.000,
+           disorder_number_of_states=21,
            disorder_integration_cut_off=5,
            disorder_distribution=gaussian_distribution_nonnorm,
            )
 
 transition =  Transition(state_low_energy=GS,
                          state_high_energy=LE,
-                         lambda_inner=0.05,
-                         lambda_outer=0.075,
-                         dipole_moment=1
+                         lambda_inner=0.1,
+                         lambda_outer=0.1,
+                         oscillator_strength=2.56,
+                         dipole_moment=3*3.33e-30/1.6e-19
                          )
 print(transition)
 
@@ -53,5 +54,7 @@ rates.calculate_rates()
 
 print("rad", rates.k_radiative_total)
 print("nonrad", rates.k_non_radiative_total)
+colors = plt.cm.cool(np.linspace(0, 1, len(temperatures)))
+plt.gca().set_prop_cycle(color=colors)
 plt.plot(photon_energies, rates.k_radiative_spectral)
 plt.show()
