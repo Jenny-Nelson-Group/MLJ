@@ -1,3 +1,4 @@
+import time
 from MLJ.physics.FCWD import fcwd
 from MLJ.physics.normalisation import partition_function
 from MLJ.physics.state import State
@@ -8,10 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from MLJ.physics.state import gaussian_distribution, gaussian_distribution_nonnorm
 
-temperatures = temperatures=np.array([50,100,150,200,250,300,350])
-res=200
-photon_energies = np.linspace(0.5, 2.5, res)
 
+temperatures = temperatures=np.linspace(100,300,100)
+photon_energies = np.linspace(0.5, 2.5, 100)
 
 GS = State(number_of_vibronic_modes=15)
 LE = State(name="Local Exciton",
@@ -32,15 +32,17 @@ transition =  Transition(state_low_energy=GS,
                          oscillator_strength=2.56,
                          static_dipole_moment=3*3.33e-30/1.6e-19
                          )
-print("-----------------------------------------------------")
 
-rates = Rates(photon_energies=photon_energies, transition=transition, temperatures=temperatures, photon_density=1)
+rates = Rates(transition, photon_energies, temperatures)
 
-print("radiative rates", rates.rate_radiative_total)
-print("non-radiative rates", rates.rate_non_radiative_total)
+# Time the first (calculation) call
+start = time.perf_counter()
+_ = rates.rate_recombination_total
+end = time.perf_counter()
+print(f"First call (calculation): {end - start:.4f}s")
 
-colors = plt.cm.cool(np.linspace(0, 1, len(temperatures)))
-plt.gca().set_prop_cycle(color=colors)
-plt.plot(photon_energies, rates.rate_radiative_spectral)
-plt.plot(photon_energies, rates.rate_absorption_spectral)
-plt.show()
+# Time the second (cached) call
+start = time.perf_counter()
+_ = rates.rate_recombination_total
+end = time.perf_counter()
+print(f"Second call (cache hit): {end - start:.8f}s")

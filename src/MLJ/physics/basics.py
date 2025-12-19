@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import genlaguerre
 import MLJ.physics.constants as const
 from functools import lru_cache
+from functools import cached_property
 
 @lru_cache(maxsize=128)
 def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
@@ -49,3 +50,17 @@ def integral(y, x=None, axis=-1):
         return np.squeeze(y, axis=axis)
 
     return np.trapezoid(y=y, x=x, axis=axis)
+
+
+class read_only_cached_property(cached_property):
+    """
+    A read-only version of @cached_property.
+    
+    Computes the attribute value once and stores it in the instance dictionary.
+    Unlike the standard cached_property, this implementation prevents manual 
+    overwriting by raising an AttributeError on assignment.
+    """
+    def __set__(self, instance, value):
+        raise AttributeError(
+            "This property is read-only. To recalculate, update the 'transition' attribute."
+        )
