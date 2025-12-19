@@ -9,6 +9,14 @@ from MLJ.physics.state import State
 from MLJ.physics.transition import Transition, TransitionType
 from MLJ.physics.config import config 
 
+# --- TESTS ---
+# 1. Test output shape 
+# 2. Test temperature dependent broadening
+# 3. Test functionality when considering no vibrational spacing 
+# 4. Test that recombination peak is always less or equal in energy compared to emission
+# 5. Test that peak intensity ratio of the first two transition equals Huang-Rhys Factor
+# 6. Test normalisation of FCWD spectrum
+
 # --- FIXTURES (Parametrised for ordered and disordered) ---
 @pytest.fixture(params=["ordered", "disordered"])
 def sample_transition(request):
@@ -22,7 +30,7 @@ def sample_transition(request):
     if request.param == "ordered":
         n_states = 1
     if request.param == "disordered":
-        # Note: Using the same number for both states to ensure a 1:1 energy gap grid
+        # Note: Using the same number for both states
         n_states = 10 
         
     gs = State(name='GS', vib_spacing=vibrational_spacing, disorder_number_of_states=n_states)
@@ -35,13 +43,6 @@ def sample_transition(request):
         lambda_inner=0.15,
         lambda_outer=0.05
     )
-
-# --- TESTS ---
-# 1. Test output shape 
-# 2. Test temperature dependent broadening
-# 3. Test functionality when considering no vibrational spacing 
-# 4. Test that recombination peak is always less or equal in energy compared to emission
-# 5. Test that peak intensity ratio of the first two transition equals Huang-Rhys Factor
 
 def test_fcwd_output_shape(sample_transition):
     """Verifies that the output array has the correct (Energy, Disorder, Temp) dimensions."""
@@ -95,7 +96,6 @@ def test_zero_vibrational_levels(sample_transition, request):
         peak_idx = np.argmax(y_values)
         assert np.isclose(photon_energies[peak_idx], energy_value_00_peak, atol=0.05)
     else:
-        # Logic for disordered state (if needed)
         print("Skipping centered-peak check for disordered state.")
 
 def test_abs_vs_rec_peak_shift(sample_transition):
@@ -115,8 +115,6 @@ def test_abs_vs_rec_peak_shift(sample_transition):
     # Emission (Recombination) peak should be less or equal than the recombination peak 
     assert peak_rec <= peak_abs, f"Rec peak ({peak_rec}) should be < Abs peak ({peak_abs})"
 
-#Iterate over different lamda_inner with fixed vibrational spacing
-# And verify that t of the huang rhys factor
 @pytest.mark.parametrize("lambda_inner", [0.1, 0.5])
 def test_huang_rhys_factor_ratio(lambda_inner):
     """
@@ -128,7 +126,7 @@ def test_huang_rhys_factor_ratio(lambda_inner):
 
     # 2. Setup States and Transition
     config.temperatures_K = np.array([40.0]) #Set low-temperature for more pronounced peaks
-    gs_le_energy_gap = 1.5  # LE is 1.5 eV above ground
+    gs_le_energy_gap = 1.5  # LE is 1.5 eV above ground state
     ground_state = State(name='GS', vib_spacing=vibrational_spacing) 
     excited_state = State(name="LE", energy=gs_le_energy_gap,vib_spacing=vibrational_spacing) 
 
@@ -208,7 +206,7 @@ def get_i00_i01_intensities(spectrum_intensity):
     
     # Sort the peaks by energy/index
     peak_indices = sorted(peaks) 
-    I_00 = spectrum_intensity[peak_indices[0]] # Intensity of the first peak (0-0)
-    I_01 = spectrum_intensity[peak_indices[1]] # Intensity of the second peak (0-1)
+    intensity_value_00_peak = spectrum_intensity[peak_indices[0]] # Intensity of the first peak (0-0)
+    intensity_value_01_peak = spectrum_intensity[peak_indices[1]] # Intensity of the second peak (0-1)
     
-    return I_00, I_01
+    return intensity_value_00_peak, intensity_value_01_peak
