@@ -82,7 +82,8 @@ def test_zero_vibrational_levels(sample_transition, request):
     photon_energies = np.linspace(energy_value_00_peak - 0.5, energy_value_00_peak + 0.5, 100)
 
     # 3. Calculate FCWD
-    fcwd_spectrum = fcwd(photon_energies, sample_transition)
+    temperatures = np.array([100,300])
+    fcwd_spectrum = fcwd(photon_energies, sample_transition, temperatures)
     y_values = fcwd_spectrum[:, 0, 0]
 
     # 4. Standard Assertions
@@ -101,15 +102,16 @@ def test_zero_vibrational_levels(sample_transition, request):
 def test_abs_vs_rec_peak_shift(sample_transition):
     """Verifies that Recombination occurs at lower energy than Absorption."""
     photon_energies = np.linspace(0.5, 2.5, 100)
-    
+    temperatures = np.array([100,300])
+
     # Case 1: Absorption
     sample_transition.transition_type = TransitionType.ABSORPTION
-    fcwd_spectrum_abs = fcwd(photon_energies, sample_transition)[:, 0, 0]
+    fcwd_spectrum_abs = fcwd(photon_energies, sample_transition, temperatures)[:, 0, 0]
     peak_abs = photon_energies[np.argmax(fcwd_spectrum_abs)]
     
     # Case 2: Recombination
     sample_transition.transition_type = TransitionType.RECOMBINATION
-    fcwd_spectrum_rec = fcwd(photon_energies, sample_transition)[:, 0, 0]
+    fcwd_spectrum_rec = fcwd(photon_energies, sample_transition, temperatures)[:, 0, 0]
     peak_rec = photon_energies[np.argmax(fcwd_spectrum_rec)]
     
     # Emission (Recombination) peak should be less or equal than the recombination peak 
@@ -123,6 +125,7 @@ def test_huang_rhys_factor_ratio(lambda_inner):
     """
     # 1. Set the vibrational spacing to be the same for both states (No Dushinsky Effect)
     vibrational_spacing = 0.15
+    temperatures = np.array([100,300])
 
     # 2. Setup States and Transition
     config.temperatures_K = np.array([40.0]) #Set low-temperature for more pronounced peaks
@@ -149,7 +152,7 @@ def test_huang_rhys_factor_ratio(lambda_inner):
     
     # Range: Start slightly below gs_le_energy_gap (1.5 eV) to gs_le_energy_gap + 5*vibrational_spacing
     photon_energies = np.linspace(gs_le_energy_gap - 0.5, gs_le_energy_gap + 5 * vibrational_spacing, resolution)
-    fcwd_spectrum_abs = fcwd(photon_energies, absorption_transition)
+    fcwd_spectrum_abs = fcwd(photon_energies, absorption_transition,temperatures)
     y_abs = fcwd_spectrum_abs[:, 0, 0] 
 
     # 4. Extract Intensities
@@ -174,16 +177,17 @@ def test_fcwd_integral_normalization(sample_transition):
     """
     # Use a wide energy range to capture the full wings of the spectrum
     # Range should cover E_gap +/- several units of lambda and vib_spacing
-    photon_energies = np.linspace(0.1, 3.0, 1000) 
+    photon_energies = np.linspace(0.1, 3.0, 1000)
+    temperatures = np.array([100,300])
     
     # Test Absorption
     sample_transition.transition_type = TransitionType.ABSORPTION
-    y_abs = fcwd(photon_energies, sample_transition)[:, 0, 0]
+    y_abs = fcwd(photon_energies, sample_transition,temperatures)[:, 0, 0]
     area_abs = trapezoid(y_abs, photon_energies)
     
     # Test Recombination
     sample_transition.transition_type = TransitionType.RECOMBINATION
-    y_rec = fcwd(photon_energies, sample_transition)[:, 0, 0]
+    y_rec = fcwd(photon_energies, sample_transition,temperatures)[:, 0, 0]
     area_rec = trapezoid(y_rec, photon_energies)
 
     # Assertions: Allow a small tolerance for numerical integration and truncated tails
