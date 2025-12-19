@@ -47,11 +47,13 @@ y_rec = fcwd_values_rec[:,0,0]
 print("-----------------------------------------------------")
 
 rates = Rates(photon_energies=photon_energies, transition=transition, temperatures=temperatures, photon_density=1)
-rates.calculate_rates()
 
-print("rad", rates.k_radiative_total)
-print("nonrad", rates.k_non_radiative_total)
+print("abs_new", rates.rate_absorption_spectral)
+print("rad_new", rates.rate_radiative_total)
+print("nonrad_new", rates.rate_non_radiative_total)
+
 colors = plt.cm.cool(np.linspace(0, 1, len(temperatures)))
 plt.gca().set_prop_cycle(color=colors)
-plt.plot(photon_energies, rates.k_radiative_spectral)
+plt.plot(photon_energies, rates.rate_radiative_spectral)
+plt.plot(photon_energies, rates.rate_absorption_spectral)
 plt.show()
