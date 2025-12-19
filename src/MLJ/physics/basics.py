@@ -1,9 +1,11 @@
 import numpy as np
-from scipy.special import factorial, genlaguerre
+from scipy.special import genlaguerre
 import MLJ.physics.constants as const
+from functools import lru_cache
 
-
+@lru_cache(maxsize=128)
 def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
+    """Core physics calculation: generates the 2D Franck-Condon factor base."""
     laguerre_base = np.zeros((N_vib_initial + 1, N_vib_final + 1))
     for i in range(N_vib_initial + 1):
         j = np.arange(i, N_vib_final + 1)
@@ -11,8 +13,8 @@ def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
         poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
         laguerre_base[i, j] = poly
 
+    laguerre_base.setflags(write=False)
     return laguerre_base
-
 
 def gaussian(x, mean, sigma):
     """Returns non-normalised Gaussian or 1 if sigma is 0."""
@@ -39,7 +41,6 @@ def boltzmann(energy, temperature):
     return np.exp(
         -energy / (temperature * const.BOLTZMANN_CONSTANT_EV)
     )
-
 
 def integral(y, x=None, axis=-1):
     y = np.asarray(y)
