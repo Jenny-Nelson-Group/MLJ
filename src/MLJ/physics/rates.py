@@ -64,7 +64,7 @@ def k_radiative_spectral(photon_energies, transition, temperatures):
     transition.set_type_recombination()
     fcwd_rec = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures)
     normalisation = partition_function(transition=transition,temperatures=temperatures)
-    rad_coupling = cpl.coupling_strength_rad(transition)
+    rad_coupling = transition.coupling_radiative
     energy_part = (photon_energies/const.SPEED_OF_LIGHT)**3
     boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])
 
@@ -87,7 +87,7 @@ def k_non_radiative_total(transition, temperatures):
 
     transition.set_type_recombination()
     fcwd_rec_0 = fcwd.fcwd(photon_energies=0, transition=transition, temperatures=temperatures)
-    nonrad_coupling = cpl.coupling_strength_nrad(transition)
+    nonrad_coupling = transition.coupling_non_radiative
     normalisation = partition_function(transition=transition,temperatures=temperatures)
 
     prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS

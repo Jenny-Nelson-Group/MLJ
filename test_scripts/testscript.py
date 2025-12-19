@@ -19,7 +19,7 @@ LE = State(name="Local Exciton",
            energy=1.35,
            number_of_vibronic_modes=5,
            vib_spacing=0.15,
-           disorder_sigma=0.000,
+           disorder_sigma=0.001,
            disorder_number_of_states=21,
            disorder_integration_cut_off=5,
            disorder_distribution=gaussian_distribution_nonnorm,
@@ -30,7 +30,7 @@ transition =  Transition(state_low_energy=GS,
                          lambda_inner=0.1,
                          lambda_outer=0.1,
                          oscillator_strength=2.56,
-                         dipole_moment=3*3.33e-30/1.6e-19
+                         static_dipole_moment=3*3.33e-30/1.6e-19
                          )
 print(transition)
 

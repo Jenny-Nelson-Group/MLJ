@@ -9,8 +9,11 @@
 #####################################################################################
 
 from MLJ.physics.state import State
+import MLJ.physics.coupling as cpl
 from enum import Enum
 import numpy as np
+from functools import cached_property
+
 
 class TransitionType(Enum):
     """Enum class to distinguish the different transition types."""
@@ -24,7 +27,7 @@ class Transition:
                 state_low_energy: State = State(),   # default to Ground State with Energy 0
                 transition_type: TransitionType = TransitionType.RECOMBINATION,
                 oscillator_strength: float = 1,
-                dipole_moment: float = 1,
+                static_dipole_moment: float = 1,
                 lambda_inner: float = 0.02,
                 lambda_outer: float = 0.02) -> None:
 
@@ -34,13 +37,27 @@ class Transition:
         self.transition_type: TransitionType = transition_type
 
         self.determine_high_low_energy_state(state_low_energy, state_high_energy)
-        self.set_gibbs_energy_grid()
 
         self.oscillator_strength: float = oscillator_strength
-        self.dipole_moment: float = dipole_moment
+        self.static_dipole_moment: float = static_dipole_moment
 
         self.lambda_inner: float = lambda_inner
         self.lambda_outer: float = lambda_outer
+
+        self.coupling_rad_func = cpl.transition_dipole_moment
+        self.coupling_nrad_func = cpl.mulliken_hush_coupling
+
+    @cached_property
+    def coupling_radiative(self):
+        """Lazy-calculated radiative coupling."""
+        # Using @property here means Rate functions just call `transition.coupling_rad`
+        return self.coupling_rad_func(self)
+
+    @cached_property
+    def coupling_non_radiative(self):
+        """Lazy-calculated non-radiative coupling."""
+        # By default, cpl.coupling_strength_nrad will call transition.coupling_rad internally
+        return self.coupling_nrad_func(self)
 
     def determine_high_low_energy_state(self, state_low_energy, state_high_energy):
         """Assign which state is the higher energy state and which state is the lower energy state."""
@@ -51,11 +68,16 @@ class Transition:
             self.state_low_energy: State = state_high_energy
             self.state_high_energy: State = state_low_energy
 
-    def set_gibbs_energy_grid(self):
-        """Calculate the spread of energies based on the disorder."""
-        self.mean_gibbs_energy: float = self.state_high_energy.energy - self.state_low_energy.energy
-        self.gibbs_energy_grid = self.state_high_energy.energy_grid - self.state_low_energy.energy
+    @cached_property
+    def mean_gibbs_energy(self) -> float:
+        """Lazily calculate the electronic energy difference."""
+        return self.state_high_energy.energy - self.state_low_energy.energy
     
+    @cached_property
+    def gibbs_energy_grid(self) -> np.ndarray:
+        """Lazily calculate the energy grid for disorder integration."""
+        return self.state_high_energy.energy_grid - self.state_low_energy.energy
+        
     @property
     def disorder_weights(self):
         return self.state_high_energy.disorder_weights
