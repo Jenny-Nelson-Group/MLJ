@@ -8,7 +8,7 @@
 # Date: November 2025
 #####################################################################################
 
-from MLJ.physics.transition import Transition
+from MLJ.physics.transition import Transition, ProcessType
 from MLJ.physics.state import State
 from MLJ.physics.normalisation import partition_function
 from MLJ.physics.config import config
@@ -45,10 +45,10 @@ def absorption_spectral(photon_energies, transition, temperatures, photon_densit
     """Calculate spectral rates of absorption of a transition based on the coupling function."""
     # e.g. coupling for absoption is radiative coupling "M = sqrt(f_osc ... )
 
-    transition.set_type_absorption()
-    fcwd_abs = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures)
-    rad_coupling = cpl.coupling_strength_rad(transition)  # plan: I can also add this as a tuneable property of transition, like the disorder distribution in states
-    normalisation = partition_function(transition=transition, temperatures=temperatures)
+    process = ProcessType.ABSORPTION
+    fcwd_abs = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures, process=process)
+    rad_coupling = transition.coupling_radiative
+    normalisation = partition_function(transition=transition, temperatures=temperatures, process=process)
     energy_part = (photon_energies/const.SPEED_OF_LIGHT)**3
     integrand = rad_coupling * fcwd_abs * transition.disorder_weights[None, :, None]
     integrated_over_disorder = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
@@ -61,9 +61,9 @@ def k_radiative_spectral(photon_energies, transition, temperatures):
     """Calculate spectral rates of radiative recombination of a transition based on the coupling function."""
     # e.g. coupling for absoption is "M = sqrt(f_osc ... )
     # [photon_energies, disorder_energy_grid, temperatures]
-    transition.set_type_recombination()
-    fcwd_rec = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures)
-    normalisation = partition_function(transition=transition,temperatures=temperatures)
+    process = ProcessType.RECOMBINATION
+    fcwd_rec = fcwd.fcwd(photon_energies=photon_energies, transition=transition, temperatures=temperatures, process=process)
+    normalisation = partition_function(transition=transition,temperatures=temperatures, process=process)
     rad_coupling = transition.coupling_radiative
     energy_part = (photon_energies/const.SPEED_OF_LIGHT)**3
     boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])
@@ -85,10 +85,10 @@ def k_non_radiative_total(transition, temperatures):
     """Calculate total non-radiative recombination rate of a transition based on the coupling function."""
     # e.g. coupling for non radiative transition is e.g.  V = function of radiative coupling M (mullken hush approximation)
 
-    transition.set_type_recombination()
-    fcwd_rec_0 = fcwd.fcwd(photon_energies=0, transition=transition, temperatures=temperatures)
+    process = ProcessType.RECOMBINATION
+    fcwd_rec_0 = fcwd.fcwd(photon_energies=0, transition=transition, temperatures=temperatures, process=process)
     nonrad_coupling = transition.coupling_non_radiative
-    normalisation = partition_function(transition=transition,temperatures=temperatures)
+    normalisation = partition_function(transition=transition,temperatures=temperatures, process=process)
 
     prefactor = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
     boltzmann_factor = boltzmann(transition.gibbs_energy_grid[None, :, None], temperatures[None, None, :])

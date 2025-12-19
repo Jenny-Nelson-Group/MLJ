@@ -12,14 +12,14 @@ import numpy as np
 from scipy.special import factorial, genlaguerre
 from typing import Sequence
 from MLJ.physics.config import config
-from MLJ.physics.transition import TransitionType
-from MLJ.physics.transition import Transition
+from MLJ.physics.transition import Transition, ProcessType
 import MLJ.physics.constants as const
 from MLJ.physics.basics import boltzmann, laguerre_2d
 
 def fcwd(photon_energies: Sequence[float],
          transition: Transition,
          temperatures: np.ndarray,
+         process: ProcessType,
          ) -> Sequence[float]:
     """
     Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
@@ -49,14 +49,12 @@ def fcwd(photon_energies: Sequence[float],
     vib_spacing = transition.state_high_energy.vib_spacing        # vibrational quantum (hΩ) (eV)
     boltzmann_eV = const.BOLTZMANN_CONSTANT_EV
 
-    transition_type = transition.transition_type
-
     # Assign the number of vibrational modes to the initial and final states
-    match transition_type:
-        case TransitionType.ABSORPTION:
+    match process:
+        case ProcessType.ABSORPTION:
             N_vib_initial = transition.state_low_energy.number_of_vibronic_modes
             N_vib_final   = transition.state_high_energy.number_of_vibronic_modes
-        case TransitionType.RECOMBINATION:
+        case ProcessType.RECOMBINATION:
             N_vib_initial = transition.state_high_energy.number_of_vibronic_modes
             N_vib_final   = transition.state_low_energy.number_of_vibronic_modes
 
@@ -88,7 +86,7 @@ def fcwd(photon_energies: Sequence[float],
     )
 
     # Exponential
-    sign = 1 if transition_type is TransitionType.ABSORPTION else -1
+    sign = 1 if process is ProcessType.ABSORPTION else -1
     factor2 = (np.exp(
             -(-sign*photon_energies_mat + sign*gibbs_energy_grid_mat + outer_reorganisation_energy + vib_diff * vib_spacing) ** 2
             / (4 * outer_reorganisation_energy * boltzmann_eV * temperature_mat)

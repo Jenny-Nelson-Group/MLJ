@@ -2,7 +2,7 @@ from MLJ.physics.FCWD import fcwd
 from MLJ.physics.normalisation import partition_function
 from MLJ.physics.state import State
 from MLJ.physics.rates import Rates
-from MLJ.physics.transition import Transition, TransitionType
+from MLJ.physics.transition import Transition, ProcessType
 import MLJ.physics.constants as const
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,13 +34,10 @@ transition =  Transition(state_low_energy=GS,
                          )
 print(transition)
 
-Zrec = partition_function(transition, temperatures=temperatures)
+Zrec = partition_function(transition, temperatures=temperatures, process=ProcessType.RECOMBINATION)
 
-#print(Zrec)
-
-
-fcwd_values_abs = fcwd(photon_energies, transition.set_type_absorption(), temperatures=temperatures)
-fcwd_values_rec = fcwd(photon_energies, transition.set_type_recombination(), temperatures=temperatures)
+fcwd_values_abs = fcwd(photon_energies, transition, temperatures=temperatures,  process=ProcessType.ABSORPTION)
+fcwd_values_rec = fcwd(photon_energies, transition, temperatures=temperatures,  process=ProcessType.RECOMBINATION)
 
 x= photon_energies
 y_abs = fcwd_values_abs[:,0,0]
