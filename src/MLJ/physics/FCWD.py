@@ -27,18 +27,18 @@ def fcwd(photon_energies: Sequence[float],
 
     Parameters
     ----------
-    photon_energies : array-like
-        Photon energies ω in eV.
+    photon_energies : np.ndarray
+        1D array of photon energies [eV] at which to evaluate spectral rates.
     transition : Transition
-        Transition object containing λ_o, Huang-Rhys factor S, level spacing hW,
-        free energy difference E, and vibronic state dimensions.
-    transition_type : str ('abs' or 'rec')
-        'abs' => absorption
-        'rec' => emission / recombination
+       Containing states, reorganisation energies, coupling strengths, and disorder parameters.
+    temperatures : np.ndarray
+        1D array of temperatures [K]
+    process : ProcessType
+        The direction of the transition (ProcessType.ABSORPTION or ProcessType.RECOMBINATION).
 
     Returns
     -------
-    fcwd : array, shape(N_omegas,N_disorder_energies,N_temperatures)
+    fcwd : array, shape(N_omegas, N_disorder_energies, N_temperatures)
         FCWD evaluated at each photon energy (averaged over vibronic states).
     """
 
@@ -61,20 +61,18 @@ def fcwd(photon_energies: Sequence[float],
     v_i = np.arange(N_vib_initial + 1)
     v_f = np.arange(N_vib_final + 1)
 
-    # Build 5D meshgrid to enable vectorization of the calculations
-    v_i_mat, v_f_mat, photon_energies_mat, gibbs_energy_grid_mat, temperature_mat = np.meshgrid(
-        v_i, v_f,
-        photon_energies,
-        gibbs_energy_grid,
-        temperatures,
-        indexing='ij')
+    # 1. Define the 'Shapes' of your axes using None
+    # Dimension Order: [v_i, v_f, E_phot, E_grid, Temp]
+    v_i_mat     = v_i[:, None, None, None, None]               # (Ni, 1, 1, 1, 1)
+    v_f_mat     = v_f[None, :, None, None, None]               # (1, Nf, 1, 1, 1)
+    photon_energies_mat    = photon_energies[None, None, :, None, None]   # (1, 1, Ne, 1, 1)
+    gibbs_energy_grid_mat  = gibbs_energy_grid[None, None, None, :, None] # (1, 1, 1, Ng, 1)
+    temperature_mat        = temperatures[None, None, None, None, :]      # (1, 1, 1, 1, Nt)
 
     vib_diff = v_f_mat - v_i_mat
 
-    # 2D Laguerre table (v_i × v_f)
+    # 2D Laguerre table (v_i × v_f) and broadcast to right shape
     laguerre_base = laguerre_2d(N_vib_initial, N_vib_final, huang_rhys)
-
-    # Now broadcast to the 5D meshgrid shape
     laguerre_mat = laguerre_base[:, :, None, None, None]
 
     # Huang Rhys Part
