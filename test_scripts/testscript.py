@@ -32,25 +32,11 @@ transition =  Transition(state_low_energy=GS,
                          oscillator_strength=2.56,
                          static_dipole_moment=3*3.33e-30/1.6e-19
                          )
-print(transition)
-
-Zrec = partition_function(transition, temperatures=temperatures, process=ProcessType.RECOMBINATION)
-
-fcwd_values_abs = fcwd(photon_energies, transition, temperatures=temperatures,  process=ProcessType.ABSORPTION)
-fcwd_values_rec = fcwd(photon_energies, transition, temperatures=temperatures,  process=ProcessType.RECOMBINATION)
-
-x= photon_energies
-y_abs = fcwd_values_abs[:,0,0]
-y_rec = fcwd_values_rec[:,0,0]
-
-
 print("-----------------------------------------------------")
 
 rates = Rates(photon_energies=photon_energies, transition=transition, temperatures=temperatures, photon_density=1)
-
-print("abs_new", rates.rate_absorption_spectral)
-print("rad_new", rates.rate_radiative_total)
-print("nonrad_new", rates.rate_non_radiative_total)
+print("radiative rates", rates.rate_radiative_total)
+print("non-radiative rates", rates.rate_non_radiative_total)
 
 colors = plt.cm.cool(np.linspace(0, 1, len(temperatures)))
 plt.gca().set_prop_cycle(color=colors)
