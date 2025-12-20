@@ -6,7 +6,7 @@ from scipy.integrate import trapezoid
 
 from MLJ.physics.FCWD import fcwd
 from MLJ.physics.state import State
-from MLJ.physics.transition import Transition, TransitionType
+from MLJ.physics.transition import Transition, ProcessType
 from MLJ.physics.config import config 
 
 # --- TESTS ---
@@ -39,7 +39,6 @@ def sample_transition(request):
     return Transition(
         state_low_energy=gs,
         state_high_energy=le,
-        transition_type=TransitionType.ABSORPTION,
         lambda_inner=0.15,
         lambda_outer=0.05
     )
@@ -52,7 +51,8 @@ def test_fcwd_output_shape(sample_transition):
     photon_energies = np.linspace(1.0, 2.0, n_photon_energies)
     temps = np.array([100.0, 300.0])
     
-    fcwd_spectrum = fcwd(photon_energies, sample_transition, temperatures=temps)
+    fcwd_spectrum = fcwd(photon_energies, sample_transition,
+                         temperatures=temps, process=ProcessType.ABSORPTION)
     
     # Expected shape: (50, number_of_states, 2)
     number_of_states = sample_transition.state_high_energy.disorder_number_of_states
@@ -64,8 +64,12 @@ def test_temperature_broadening(sample_transition):
     photon_energies = np.linspace(1.0, 2.0, 100)
     
     # Compare 50K and 500K; 0 and 0 index since no disorder and only single temperature is considered
-    fcwd_spectrum_cold = fcwd(photon_energies, sample_transition, temperatures=np.array([50.0]))[:, 0, 0]
-    fcwd_spectrum_hot = fcwd(photon_energies, sample_transition, temperatures=np.array([500.0]))[:, 0, 0]
+    fcwd_spectrum_cold = fcwd(photon_energies, sample_transition,
+                              temperatures=np.array([50.0]), process=ProcessType.ABSORPTION
+                              )[:, 0, 0]
+    fcwd_spectrum_hot = fcwd(photon_energies, sample_transition,
+                             temperatures=np.array([500.0]), process=ProcessType.ABSORPTION
+                             )[:, 0, 0]
 
     assert np.max(fcwd_spectrum_cold) > np.max(fcwd_spectrum_hot), "Cold peak should be sharper and higher than hot peak"
 
@@ -83,7 +87,8 @@ def test_zero_vibrational_levels(sample_transition, request):
 
     # 3. Calculate FCWD
     temperatures = np.array([100,300])
-    fcwd_spectrum = fcwd(photon_energies, sample_transition, temperatures)
+    fcwd_spectrum = fcwd(photon_energies, sample_transition,
+                         temperatures, process=ProcessType.ABSORPTION)
     y_values = fcwd_spectrum[:, 0, 0]
 
     # 4. Standard Assertions
@@ -105,13 +110,15 @@ def test_abs_vs_rec_peak_shift(sample_transition):
     temperatures = np.array([100,300])
 
     # Case 1: Absorption
-    sample_transition.transition_type = TransitionType.ABSORPTION
-    fcwd_spectrum_abs = fcwd(photon_energies, sample_transition, temperatures)[:, 0, 0]
+    fcwd_spectrum_abs = fcwd(photon_energies, sample_transition,
+                             temperatures, process=ProcessType.ABSORPTION
+                             )[:, 0, 0]
     peak_abs = photon_energies[np.argmax(fcwd_spectrum_abs)]
     
     # Case 2: Recombination
-    sample_transition.transition_type = TransitionType.RECOMBINATION
-    fcwd_spectrum_rec = fcwd(photon_energies, sample_transition, temperatures)[:, 0, 0]
+    fcwd_spectrum_rec = fcwd(photon_energies, sample_transition,
+                             temperatures,process=ProcessType.RECOMBINATION
+                             )[:, 0, 0]
     peak_rec = photon_energies[np.argmax(fcwd_spectrum_rec)]
     
     # Emission (Recombination) peak should be less or equal than the recombination peak 
@@ -136,23 +143,22 @@ def test_huang_rhys_factor_ratio(lambda_inner):
     #Set inner reorganisation energy for the transition that uniquely determines the Huang-Rhys
     huang_rhys_target = lambda_inner/vibrational_spacing
 
-    absorption_transition = Transition(
+    transition = Transition(
         state_low_energy=ground_state, 
         state_high_energy=excited_state, 
-        transition_type=TransitionType.ABSORPTION,
         lambda_inner=lambda_inner
     )
 
     # Sanity Check: Verify the Transition calculates the correct S
-    assert np.isclose(absorption_transition.huang_rhys, huang_rhys_target), \
-        f"Internal calculation mismatch: Expected S={huang_rhys_target}, Got {absorption_transition.huang_rhys}"
+    assert np.isclose(transition.huang_rhys, huang_rhys_target), \
+        f"Internal calculation mismatch: Expected S={huang_rhys_target}, Got {transition.huang_rhys}"
     
     # 3. Calculate FCWD Values (Spectrum)
     resolution = 500  
     
     # Range: Start slightly below gs_le_energy_gap (1.5 eV) to gs_le_energy_gap + 5*vibrational_spacing
     photon_energies = np.linspace(gs_le_energy_gap - 0.5, gs_le_energy_gap + 5 * vibrational_spacing, resolution)
-    fcwd_spectrum_abs = fcwd(photon_energies, absorption_transition,temperatures)
+    fcwd_spectrum_abs = fcwd(photon_energies, transition, temperatures, process=ProcessType.ABSORPTION)
     y_abs = fcwd_spectrum_abs[:, 0, 0] 
 
     # 4. Extract Intensities
@@ -181,13 +187,13 @@ def test_fcwd_integral_normalization(sample_transition):
     temperatures = np.array([100,300])
     
     # Test Absorption
-    sample_transition.transition_type = TransitionType.ABSORPTION
-    y_abs = fcwd(photon_energies, sample_transition,temperatures)[:, 0, 0]
+    y_abs = fcwd(photon_energies, sample_transition,
+                 temperatures, process=ProcessType.ABSORPTION)[:, 0, 0]
     area_abs = trapezoid(y_abs, photon_energies)
     
     # Test Recombination
-    sample_transition.transition_type = TransitionType.RECOMBINATION
-    y_rec = fcwd(photon_energies, sample_transition,temperatures)[:, 0, 0]
+    y_rec = fcwd(photon_energies, sample_transition,
+                 temperatures, process=ProcessType.RECOMBINATION)[:, 0, 0]
     area_rec = trapezoid(y_rec, photon_energies)
 
     # Assertions: Allow a small tolerance for numerical integration and truncated tails
