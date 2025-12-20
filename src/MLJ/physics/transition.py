@@ -85,7 +85,7 @@ class Transition:
         """Return the disorder distribution of the high energy state."""
         return self.state_high_energy.disorder_distribution
 
-    @property
+    @cached_property
     def huang_rhys(self):
         """Calculate the Huang Rhys Factor."""
         if self.state_high_energy.vib_spacing != 0:
