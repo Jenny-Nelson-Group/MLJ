@@ -26,7 +26,7 @@ class Transition:
                 state_high_energy: State,  # typically the excited or CT state
                 state_low_energy: State = State(),   # default to Ground State with Energy 0
                 oscillator_strength: float = 1,
-                static_dipole_moment: float = 1,
+                static_dipole_moment: float = 3*3.33e-30/1.6e-19,
                 lambda_inner: float = 0.02,
                 lambda_outer: float = 0.02) -> None:
 
@@ -70,16 +70,16 @@ class Transition:
     def mean_gibbs_energy(self) -> float:
         """Lazily calculate the electronic energy difference."""
         return self.state_high_energy.energy - self.state_low_energy.energy
-    
+
     @cached_property
     def gibbs_energy_grid(self) -> np.ndarray:
         """Lazily calculate the energy grid for disorder integration."""
         return self.state_high_energy.energy_grid - self.state_low_energy.energy
-        
+
     @property
     def disorder_weights(self):
         return self.state_high_energy.disorder_weights
-    
+
     @property
     def disorder_distribution(self):
         """Return the disorder distribution of the high energy state."""
