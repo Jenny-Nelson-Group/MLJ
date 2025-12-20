@@ -16,10 +16,26 @@ from typing import Sequence
 
 def partition_function(transition: Transition,
                        temperatures: np.ndarray,
-                       process: ProcessType, 
+                       process: ProcessType,
                        ) -> Sequence[float]:
-    """Return the normalisation factor from the integrated partition function for each temperature."""
-    
+    """Return the normalisation factor from the integrated partition function for each temperature.
+    For reference formula see: https://www.nature.com/articles/s41467-021-23975-3 eq. 8 and 9
+
+    Parameters
+    ----------
+    transition : Transition
+        Containing states, reorganisation energies, coupling strengths, and disorder parameters.
+    temperatures : np.ndarray
+        1D array of temperatures [K]
+    process : ProcessType
+        The direction of the transition (ProcessType.ABSORPTION or ProcessType.RECOMBINATION).
+
+    Returns
+    -------
+    partition_function : array, shape(N_temperatures)
+        FCWD evaluated at each photon energy (averaged over vibronic states).
+    """
+
     if (process == ProcessType.RECOMBINATION):
         boltzmann_factor = boltzmann(
         transition.gibbs_energy_grid[:, None],
