@@ -1,12 +1,13 @@
 # tests/test_transition.py
 
 import numpy as np
+from MLJ.physics.transition import Transition
+from MLJ.physics.transition import ProcessType
+from MLJ.physics.state import State
 
 def test_import_transition():
-    from MLJ.physics.transition import Transition
-    from MLJ.physics.transition import TransitionType
     assert hasattr(Transition, "__doc__")
-    assert hasattr(TransitionType, "__doc__")
+    assert hasattr(ProcessType, "__doc__")
 
 def test_transition_energy():
     from MLJ.physics.state import State
@@ -25,29 +26,6 @@ def test_transition_energy():
     assert energy_difference == transition2.mean_gibbs_energy
     assert energy_difference == transition3.mean_gibbs_energy
     assert energy_difference == transition4.mean_gibbs_energy
-
-def test_transition_type():
-    from MLJ.physics.state import State
-    from MLJ.physics.transition import Transition
-    from MLJ.physics.transition import TransitionType
-
-    excited_state = State("LE",energy=1.5)
-    transition = Transition(excited_state)
-
-    assert transition.transition_type == TransitionType.RECOMBINATION
-
-def test_change_transition_type():
-    from MLJ.physics.state import State
-    from MLJ.physics.transition import Transition
-    from MLJ.physics.transition import TransitionType
-
-    excited_state = State("LE",energy=1.5)
-    transition = Transition(excited_state)
-
-    assert transition.transition_type == TransitionType.RECOMBINATION
-    assert transition.set_type_absorption().transition_type == TransitionType.ABSORPTION
-    assert transition.set_type_recombination().transition_type == TransitionType.RECOMBINATION
-
 
 def test_huang_rhys():
     from MLJ.physics.state import State

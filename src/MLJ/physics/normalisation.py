@@ -8,26 +8,44 @@
 # Date: November 2025
 #####################################################################################
 
-from MLJ.physics.transition import TransitionType, Transition
+from MLJ.physics.transition import Transition, ProcessType
 from MLJ.physics.basics import boltzmann, integral
 from MLJ.physics.config import config
 import numpy as np
 from typing import Sequence
 
 def partition_function(transition: Transition,
-                       temperatures: np.ndarray = None,
+                       temperatures: np.ndarray,
+                       process: ProcessType,
                        ) -> Sequence[float]:
-    """Return the normalisation factor from the integrated partition function for each temperature."""
+    """Return the normalisation factor from the integrated partition function for each temperature.
+    For reference formula see: https://www.nature.com/articles/s41467-021-23975-3 eq. 8 and 9
 
-    temperatures = config.temperatures_K if temperatures is None else temperatures
+    Parameters
+    ----------
+    transition : Transition
+        Containing states, reorganisation energies, coupling strengths, and disorder parameters.
+    temperatures : np.ndarray
+        1D array of temperatures [K]
+    process : ProcessType
+        The direction of the transition (ProcessType.ABSORPTION or ProcessType.RECOMBINATION).
 
-    if (transition.transition_type == TransitionType.RECOMBINATION):
-        boltzmann_factor = boltzmann(transition.gibbs_energy_grid, temperatures)
+    Returns
+    -------
+    partition_function : array, shape(N_temperatures)
+        FCWD evaluated at each photon energy (averaged over vibronic states).
+    """
+
+    if (process == ProcessType.RECOMBINATION):
+        boltzmann_electronic_states = boltzmann(
+        transition.gibbs_energy_grid[:, None],
+        temperatures[None, :]
+    )
     else:
-        boltzmann_factor = np.ones(len(temperatures))
+        boltzmann_electronic_states = np.ones((1, len(temperatures)))
 
-    integrand = transition.disorder_weights[:, None] * boltzmann_factor
+    integrand = transition.disorder_weights[:, None] * boltzmann_electronic_states
 
-    partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid)
+    partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid, axis=0)
 
     return partition_function
