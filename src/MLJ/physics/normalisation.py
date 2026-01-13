@@ -37,14 +37,14 @@ def partition_function(transition: Transition,
     """
 
     if (process == ProcessType.RECOMBINATION):
-        boltzmann_factor = boltzmann(
+        boltzmann_electronic_states = boltzmann(
         transition.gibbs_energy_grid[:, None],
         temperatures[None, :]
     )
     else:
-        boltzmann_factor = np.ones((1, len(temperatures)))
+        boltzmann_electronic_states = np.ones((1, len(temperatures)))
 
-    integrand = transition.disorder_weights[:, None] * boltzmann_factor
+    integrand = transition.disorder_weights[:, None] * boltzmann_electronic_states
 
     partition_function  = integral(y=integrand, x=transition.gibbs_energy_grid, axis=0)
 
