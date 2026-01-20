@@ -2,6 +2,10 @@
 import numpy as np
 import MLJ.physics.basics as bs
 
+def test_true():
+    """Set to False if you want to check that failed tests trigger something."""
+    assert True
+
 def test_dirac_delta():
     number_of_states = 5
     weights = bs.dirac_delta(num=number_of_states)
