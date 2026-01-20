@@ -40,138 +40,18 @@ class Rates:
             transition: Transition,
             photon_energies: np.ndarray,
             temperatures: np.ndarray = None,
-            photon_density: float = 1,
+            photon_density: float = None,
             ) -> None:
 
-            self._transition = transition
-            self._photon_energies = photon_energies
-            self._temperatures = config.temperatures_K if temperatures is None else temperatures
-            self._photon_density = config.photon_density if photon_density is None else photon_density
+            self._transition = None
+            self._photon_energies = None
+            self._temperatures = None
+            self._photon_density = None
 
-    all_rates = [
-        'rate_absorption_spectral',
-        'rate_radiative_spectral',
-        'rate_radiative_total',
-        'rate_non_radiative_total',
-        'rate_recombination_total'
-    ]
-
-    @property
-    def transition(self):
-        return self._transition
-
-    @transition.setter
-    def transition(self,value):
-        # Clear anything that depends on transition properties
-        self.clear_from_cache(Rates.all_rates)
-
-        if (self.transition.gibbs_energy_grid != self._transition.gibbs_energy_grid):
-            self.clear_from_cache([
-                'boltzmann_factor',
-                'norm_recombination',
-                'norm_absorption',
-            ])
-        if (self.transition.disorder_weights != self._transition.disorder_weights):
-            self.clear_from_cache([
-                'norm_recombination',
-                'norm_absorption',
-            ])
-
-        self._transition = value
-
-    @property
-    def photon_energies(self):
-        return self._photon_energies
-
-    @photon_energies.setter
-    def photon_energies(self,value):
-        self._photon_energies = value
-
-        # Clear anything that depends on photon energies from cache
-        self.clear_from_cache(Rates.all_rates)
-        self.clear_from_cache([
-            'energy_prefactor',
-        ])
-
-    @property
-    def temperatures(self):
-        return self._temperatures
-
-    @temperatures.setter
-    def temperatures(self,value):
-        self._temperatures = value
-
-        # Clear anything that is temperature dependent from cache
-        self.clear_from_cache(Rates.all_rates)
-        self.clear_from_cache([
-            'boltzmann_factor',
-            'norm_recombination',
-            'norm_absorption',
-        ])
-
-    @property
-    def photon_density(self):
-        return self._photon_density
-
-    @photon_density.setter
-    def photon_density(self,value):
-        self._photon_density = value
-
-        # Clear anything that is temperature dependent from cache
-        self.clear_from_cache([
-            'rate_absorption_spectral',
-        ])
-
-    @read_only_cached_property
-    def rate_absorption_spectral(self):
-        """Spectral radiative absorption rate."""
-        return self.rate_calculation(process = ProcessType.ABSORPTION, is_non_radiative=False)
-
-    @read_only_cached_property
-    def rate_radiative_spectral(self):
-        """Spectral radiative recombination rate."""
-        return self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=False)
-
-    @read_only_cached_property
-    def rate_radiative_total(self):
-        """Total radiative rate integrated over photon energies."""
-        return integral(y=self.rate_radiative_spectral, x=self.photon_energies, axis=0)
-
-    @read_only_cached_property
-    def rate_non_radiative_total(self):
-        """Total non-radiative rate"""
-        knrad = self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=True)
-        return knrad.squeeze(axis=0)
-
-    @read_only_cached_property
-    def rate_recombination_total(self):
-        """The total recombination rate (Radiative + Non-Radiative)."""
-        return self.rate_radiative_total + self.rate_non_radiative_total
-
-    @read_only_cached_property
-    def boltzmann_factor(self):
-        """ Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
-        grid = self.transition.gibbs_energy_grid
-        return boltzmann(grid[None, :, None], self.temperatures[None, None, :])
-
-    @read_only_cached_property
-    def norm_recombination(self):
-        """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
-        return partition_function(self.transition, self.temperatures, ProcessType.RECOMBINATION)
-
-    @read_only_cached_property
-    def norm_absorption(self):
-        """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
-        return partition_function(self.transition, self.temperatures, ProcessType.ABSORPTION)
-
-    @read_only_cached_property
-    def energy_prefactor(self):
-        """Energy prefactor for radiative transitions with (shape(photon_energies))"""
-        return (self.photon_energies/const.SPEED_OF_LIGHT)**3
-
-    def clear_from_cache(self, vars_to_clear: list) -> None:
-        for var in vars_to_clear:
-            self.__dict__.pop(var, None)
+            self.transition = transition
+            self.photon_energies = photon_energies
+            self.temperatures = config.temperatures_K if temperatures is None else temperatures
+            self.photon_density = config.photon_density if photon_density is None else photon_density
 
     def rate_calculation(self, process, is_non_radiative):
         """
@@ -238,3 +118,86 @@ class Rates:
             rate *= self.photon_density
 
         return rate
+
+# ----------------------------------------- Property Caching --------------------------------------------#
+
+    def _clear_cache(self):
+        """Dynamically finds all cached_properties in the class and clears them."""
+        for attr in dir(self.__class__):
+            if isinstance(getattr(self.__class__, attr), read_only_cached_property):
+                self.__dict__.pop(attr, None)
+
+    @property
+    def transition(self): return self._transition
+    @transition.setter
+    def transition(self, value):
+        self._transition = value
+        self._clear_cache()
+
+    @property
+    def photon_energies(self): return self._photon_energies
+    @photon_energies.setter
+    def photon_energies(self, value):
+        self._photon_energies = value
+        self._clear_cache()
+
+    @property
+    def temperatures(self): return self._temperatures
+    @temperatures.setter
+    def temperatures(self, value):
+        self._temperatures = value
+        self._clear_cache()
+
+    @property
+    def photon_density(self): return self._photon_density
+    @photon_density.setter
+    def photon_density(self, value):
+        self._photon_density = value
+        self._clear_cache()
+
+    @read_only_cached_property
+    def rate_absorption_spectral(self):
+        """Spectral radiative absorption rate."""
+        return self.rate_calculation(process = ProcessType.ABSORPTION, is_non_radiative=False)
+
+    @read_only_cached_property
+    def rate_radiative_spectral(self):
+        """Spectral radiative recombination rate."""
+        return self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=False)
+
+    @read_only_cached_property
+    def rate_radiative_total(self):
+        """Total radiative rate integrated over photon energies."""
+        return integral(y=self.rate_radiative_spectral, x=self.photon_energies, axis=0)
+
+    @read_only_cached_property
+    def rate_non_radiative_total(self):
+        """Total non-radiative rate"""
+        knrad = self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=True)
+        return knrad.squeeze(axis=0)
+
+    @read_only_cached_property
+    def rate_recombination_total(self):
+        """The total recombination rate (Radiative + Non-Radiative)."""
+        return self.rate_radiative_total + self.rate_non_radiative_total
+
+    @read_only_cached_property
+    def boltzmann_factor(self):
+        """ Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
+        grid = self.transition.gibbs_energy_grid
+        return boltzmann(grid[None, :, None], self.temperatures[None, None, :])
+
+    @read_only_cached_property
+    def norm_recombination(self):
+        """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
+        return partition_function(self.transition, self.temperatures, ProcessType.RECOMBINATION)
+
+    @read_only_cached_property
+    def norm_absorption(self):
+        """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
+        return partition_function(self.transition, self.temperatures, ProcessType.ABSORPTION)
+
+    @read_only_cached_property
+    def energy_prefactor(self):
+        """Energy prefactor for radiative transitions with (shape(photon_energies))"""
+        return (self.photon_energies/const.SPEED_OF_LIGHT)**3
