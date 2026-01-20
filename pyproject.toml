@@ -46,6 +46,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 # This tells pytest to always include these flags
 addopts = "--cov=MLJ --cov-report=term-missing"
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
