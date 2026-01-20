@@ -9,19 +9,18 @@
 #####################################################################################
 
 from MLJ.physics.transition import Transition, ProcessType
-from MLJ.physics.state import State
 from MLJ.physics.normalisation import partition_function
 from MLJ.physics.config import config
 import MLJ.physics.FCWD as fcwd
 import MLJ.physics.constants as const
-import MLJ.physics.coupling as cpl
 from MLJ.physics.basics import integral, boltzmann
-from functools import cached_property
+from MLJ.helpers.chaching import read_only_cached_property, ReactiveModule
+
 import numpy as np
 
 _prefactor_rad = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_EV*const.REDUCED_PLANCK_CONSTANT_EVS**4)
 _prefactor_nrad = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
-class Rates:
+class Rates(ReactiveModule):
     """
     Manager for calculating radiative and non-radiative transition rates.
     This class serves as a manager that lazily computes and caches transition.
@@ -42,57 +41,65 @@ class Rates:
             transition: Transition,
             photon_energies: np.ndarray,
             temperatures: np.ndarray = None,
-            photon_density: float = 1,
+            photon_density: float = None,
             ) -> None:
+
+            self._transition = None
+            self._photon_energies = None
+            self._temperatures = None
+            self._photon_density = None
 
             self.transition = transition
             self.photon_energies = photon_energies
             self.temperatures = config.temperatures_K if temperatures is None else temperatures
             self.photon_density = config.photon_density if photon_density is None else photon_density
 
-    @cached_property
+            self.start_caching()
+
+# ----------------------------------------- Property Caching --------------------------------------------#
+    @read_only_cached_property
     def rate_absorption_spectral(self):
         """Spectral radiative absorption rate."""
         return self.rate_calculation(process = ProcessType.ABSORPTION, is_non_radiative=False)
 
-    @cached_property
+    @read_only_cached_property
     def rate_radiative_spectral(self):
         """Spectral radiative recombination rate."""
         return self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=False)
 
-    @cached_property
+    @read_only_cached_property
     def rate_radiative_total(self):
         """Total radiative rate integrated over photon energies."""
         return integral(y=self.rate_radiative_spectral, x=self.photon_energies, axis=0)
 
-    @cached_property
+    @read_only_cached_property
     def rate_non_radiative_total(self):
         """Total non-radiative rate"""
         knrad = self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=True)
         return knrad.squeeze(axis=0)
 
-    @cached_property
+    @read_only_cached_property
     def rate_recombination_total(self):
         """The total recombination rate (Radiative + Non-Radiative)."""
         return self.rate_radiative_total + self.rate_non_radiative_total
 
-    @cached_property
+    @read_only_cached_property
     def boltzmann_electronic_states(self):
         """ Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
         grid = self.transition.gibbs_energy_grid
         return boltzmann(grid[None, :, None], self.temperatures[None, None, :])
 
-    @cached_property
+    @read_only_cached_property
     def norm_recombination(self):
         """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
         return partition_function(self.transition, self.temperatures, ProcessType.RECOMBINATION)
 
-    @cached_property
+    @read_only_cached_property
     def norm_absorption(self):
         """Partition function (shape: (N_disorder_energies, N_temperatures)) result cached for the current temperatures."""
         return partition_function(self.transition, self.temperatures, ProcessType.ABSORPTION)
 
-    @cached_property
+    @read_only_cached_property
     def photon_phase_space(self):
         """Energy prefactor for radiative transitions with (shape(photon_energies))"""
         return (self.photon_energies/const.SPEED_OF_LIGHT)**3
