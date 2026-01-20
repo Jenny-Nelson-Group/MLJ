@@ -30,7 +30,7 @@ def transition_dipole_moment(transition) -> float:
 def mulliken_hush_coupling(transition) -> float:
     """ Calculates the non-radiative coupling strength M of the transition based on Mulliken Hush."""
 
-    rad_coupling = transition.coupling_radiative
+    rad_coupling = transition.electronic_coupling_radiative
 
     E_mid = transition.mean_gibbs_energy
     static_dipole_moment = transition.static_dipole_moment

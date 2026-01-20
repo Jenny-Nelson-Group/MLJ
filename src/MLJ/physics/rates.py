@@ -53,7 +53,9 @@ class Rates(ReactiveModule):
             self.photon_energies = photon_energies
             self.temperatures = config.temperatures_K if temperatures is None else temperatures
             self.photon_density = config.photon_density if photon_density is None else photon_density
+
             self._initialized = True
+
 
     def rate_calculation(self, process, is_non_radiative):
         """
@@ -83,12 +85,12 @@ class Rates(ReactiveModule):
             calculation_energies = np.array([0.0])
             energy_term = np.array([1.0])
             prefactor = _prefactor_nrad
-            coupling = transition.coupling_non_radiative
+            coupling = transition.electronic_coupling_non_radiative
         else:
             calculation_energies = self.photon_energies
-            energy_term = self.energy_prefactor
+            energy_term = self.photon_phase_space
             prefactor = _prefactor_rad
-            coupling = transition.coupling_radiative
+            coupling = transition.electronic_coupling_radiative
 
         # 2. Get FCWD
         fcwd_ = fcwd.fcwd(photon_energies=calculation_energies, transition=transition,
@@ -100,7 +102,7 @@ class Rates(ReactiveModule):
         # apply Boltzmann to recombination processes and select partition function
         match process:
             case ProcessType.RECOMBINATION:
-                integrand *= self.boltzmann_factor
+                integrand *= self.boltzmann_electronic_states
                 norm = self.norm_recombination
             case ProcessType.ABSORPTION:
                 norm = self.norm_absorption
@@ -149,7 +151,7 @@ class Rates(ReactiveModule):
         return self.rate_radiative_total + self.rate_non_radiative_total
 
     @read_only_cached_property
-    def boltzmann_factor(self):
+    def boltzmann_electronic_states(self):
         """ Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
         grid = self.transition.gibbs_energy_grid
         return boltzmann(grid[None, :, None], self.temperatures[None, None, :])
@@ -165,6 +167,6 @@ class Rates(ReactiveModule):
         return partition_function(self.transition, self.temperatures, ProcessType.ABSORPTION)
 
     @read_only_cached_property
-    def energy_prefactor(self):
+    def photon_phase_space(self):
         """Energy prefactor for radiative transitions with (shape(photon_energies))"""
         return (self.photon_energies/const.SPEED_OF_LIGHT)**3

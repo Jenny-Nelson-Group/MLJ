@@ -43,8 +43,8 @@ class Transition(ReactiveModule):
         self.lambda_inner: float = lambda_inner
         self.lambda_outer: float = lambda_outer
 
-        self.coupling_rad_func = cpl.transition_dipole_moment
-        self.coupling_nrad_func = cpl.mulliken_hush_coupling
+        self.electronic_coupling_rad_func = cpl.transition_dipole_moment
+        self.electronic_coupling_nrad_func = cpl.mulliken_hush_coupling
 
         self._initialized = True
 
@@ -58,16 +58,16 @@ class Transition(ReactiveModule):
             self.state_high_energy: State = state_low_energy
 
     @cached_property
-    def coupling_radiative(self):
+    def electronic_coupling_radiative(self):
         """Lazy-calculated radiative coupling."""
         # Using @property here means Rate functions just call `transition.coupling_rad`
-        return self.coupling_rad_func(self)
+        return self.electronic_coupling_rad_func(self)
 
     @cached_property
-    def coupling_non_radiative(self):
+    def electronic_coupling_non_radiative(self):
         """Lazy-calculated non-radiative coupling."""
         # By default, cpl.coupling_strength_nrad will call transition.coupling_rad internally
-        return self.coupling_nrad_func(self)
+        return self.electronic_coupling_nrad_func(self)
 
     @cached_property
     def mean_gibbs_energy(self) -> float:

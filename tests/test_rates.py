@@ -43,10 +43,10 @@ def test_rates_output_shape(sample_transition):
     disorder_number_of_states = rates.transition.state_high_energy.disorder_number_of_states
 
     # check shape of intermediate cached values
-    assert rates.boltzmann_factor.shape == (1, disorder_number_of_states, resolution_temperatures)
+    assert rates.boltzmann_electronic_states.shape == (1, disorder_number_of_states, resolution_temperatures)
     assert rates.norm_recombination.shape == (resolution_temperatures,)
     assert rates.norm_absorption.shape == (resolution_temperatures,)
-    assert rates.energy_prefactor.shape == (resolution_photon_energies,)
+    assert rates.photon_phase_space.shape == (resolution_photon_energies,)
 
     # check shape of final rates
     assert rates.rate_radiative_spectral.shape == (resolution_photon_energies, resolution_temperatures)
