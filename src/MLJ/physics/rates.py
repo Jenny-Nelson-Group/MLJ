@@ -13,13 +13,14 @@ from MLJ.physics.normalisation import partition_function
 from MLJ.physics.config import config
 import MLJ.physics.FCWD as fcwd
 import MLJ.physics.constants as const
-from MLJ.physics.basics import integral, boltzmann, read_only_cached_property
+from MLJ.physics.basics import integral, boltzmann
+from MLJ.helpers.helpers import read_only_cached_property, ReactiveModule
 
 import numpy as np
 
 _prefactor_rad = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_EV*const.REDUCED_PLANCK_CONSTANT_EVS**4)
 _prefactor_nrad = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
-class Rates:
+class Rates(ReactiveModule):
     """
     Manager for calculating radiative and non-radiative transition rates.
     This class serves as a manager that lazily computes and caches transition.
@@ -52,6 +53,7 @@ class Rates:
             self.photon_energies = photon_energies
             self.temperatures = config.temperatures_K if temperatures is None else temperatures
             self.photon_density = config.photon_density if photon_density is None else photon_density
+            self._initialized = True
 
     def rate_calculation(self, process, is_non_radiative):
         """
@@ -120,41 +122,6 @@ class Rates:
         return rate
 
 # ----------------------------------------- Property Caching --------------------------------------------#
-
-    def _clear_cache(self):
-        """Dynamically finds all cached_properties in the class and clears them."""
-        for attr in dir(self.__class__):
-            if isinstance(getattr(self.__class__, attr), read_only_cached_property):
-                self.__dict__.pop(attr, None)
-
-    @property
-    def transition(self): return self._transition
-    @transition.setter
-    def transition(self, value):
-        self._transition = value
-        self._clear_cache()
-
-    @property
-    def photon_energies(self): return self._photon_energies
-    @photon_energies.setter
-    def photon_energies(self, value):
-        self._photon_energies = value
-        self._clear_cache()
-
-    @property
-    def temperatures(self): return self._temperatures
-    @temperatures.setter
-    def temperatures(self, value):
-        self._temperatures = value
-        self._clear_cache()
-
-    @property
-    def photon_density(self): return self._photon_density
-    @photon_density.setter
-    def photon_density(self, value):
-        self._photon_density = value
-        self._clear_cache()
-
     @read_only_cached_property
     def rate_absorption_spectral(self):
         """Spectral radiative absorption rate."""

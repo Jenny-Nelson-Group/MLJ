@@ -125,3 +125,91 @@ def test_low_and_no_sigma():
 
     np.testing.assert_allclose(rates_low_sigma.rate_radiative_total, rates_no_sigma.rate_radiative_total, rtol=1e-5)
     np.testing.assert_allclose(rates_low_sigma.rate_non_radiative_total, rates_no_sigma.rate_non_radiative_total, rtol=1e-5)
+
+
+def test_cache_invalidation():
+    """Test that the values are correctly recalculated if the properties of Rates change."""
+    temperatures_1 = np.array([100,200,300])
+    temperatures_2 = np.array([150,250,350])
+    photon_energies_1 = np.linspace(1.0, 3.0, 100)
+    photon_energies_2 = np.linspace(0.5, 2.5, 200)
+
+    transition_1 =  Transition(
+        State(name="Local Exciton",
+            energy=1.50,
+            disorder_sigma=0.01,
+            disorder_number_of_states=21,
+            )
+        )
+
+    transition_2 =  Transition(
+        State(name="Local Exciton",
+            energy=1.40,
+            disorder_sigma=0.02,
+            disorder_number_of_states=21,
+            )
+        )
+
+    rates = Rates(
+        transition=transition_1,
+        photon_energies=photon_energies_1,
+        temperatures=temperatures_1)
+
+    # Swapping the transition should trigger cache invalidation
+    rate_1 = rates.rate_recombination_total
+    rates.transition = transition_2
+    rate_2 = rates.rate_recombination_total
+    assert not np.array_equal(rate_1, rate_2)
+
+    #changing the old transition after saw should not trigger cache invalidation
+    transition_1.lambda_inner = 999.0
+    rate_2_check = rates.rate_recombination_total
+    assert np.array_equal(rate_2_check, rate_2)
+
+    # changing top level attributes should trigger chache invalidation
+    rates.temperatures = temperatures_2
+    rate_3 = rates.rate_recombination_total
+    rates.photon_energies = photon_energies_2
+    rate_4 = rates.rate_recombination_total
+    assert not np.array_equal(rate_2, rate_3)
+    assert not np.array_equal(rate_3, rate_4)
+
+    # changing nested attributes should trigger cache invalidation
+    rates.transition.lambda_inner = 0.783
+    rate_5 = rates.rate_recombination_total
+    rates.transition.lambda_outer = 0.567
+    rate_6 = rates.rate_recombination_total
+    rates.transition.state_high_energy.energy = 1.3
+    rate_7 = rates.rate_recombination_total
+    assert not np.array_equal(rate_4, rate_5)
+    assert not np.array_equal(rate_5, rate_6)
+    assert not np.array_equal(rate_6, rate_7)
+
+    # swapping the state object inside transition should trigger c.i.
+    new_state = State(energy=2.0)
+    rates.transition.state_high_energy = new_state
+    rate_8 = rates.rate_recombination_total
+    assert not np.array_equal(rate_7, rate_8)
+
+    # Check that None assignment does not raise AttributeError or TypeError
+    rates.photon_density = None
+    rates.photon_density = 1.0
+
+def test_observable_cleanup():
+    t1 = Transition(State(energy=1.0))
+    t2 = Transition(State(energy=2.0))
+    rates = Rates(transition=t1, photon_energies=np.array([1, 2]))
+
+    # Switch to t2
+    rates.transition = t2
+    initial_rate = rates.rate_recombination_total
+    assert 'rate_recombination_total' in rates.__dict__
+    
+    # Modify t1 (the discarded object)
+    t1.lambda_inner = 0.5
+
+    # The cache should NOT have cleared; it should still be identical
+    # If the cleanup failed, t1 would have cleared the rates cache
+    # even though it's no longer the active transition.
+    assert 'rate_recombination_total' in rates.__dict__
+    assert np.array_equal(rates.rate_recombination_total, initial_rate)
