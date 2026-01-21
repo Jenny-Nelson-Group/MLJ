@@ -44,11 +44,6 @@ class Rates(ReactiveModule):
             photon_density: float = None,
             ) -> None:
 
-            self._transition = None
-            self._photon_energies = None
-            self._temperatures = None
-            self._photon_density = None
-
             self.transition = transition
             self.photon_energies = photon_energies
             self.temperatures = config.temperatures_K if temperatures is None else temperatures
