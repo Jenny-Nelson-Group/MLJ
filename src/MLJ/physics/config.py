@@ -20,7 +20,7 @@ class _Config:
     that are defined in this file.
     """
     temperatures_K: np.ndarray = field(default_factory=lambda: np.array([300.0]))
-
+    photon_density: float = 1
 
 config = _Config() # public singleton (making sure that only one instance of the config is used across the package)
 

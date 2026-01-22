@@ -13,14 +13,14 @@ import MLJ.physics.coupling as cpl
 from enum import Enum
 import numpy as np
 from functools import cached_property
-
+from MLJ.helpers.chaching import ReactiveModule
 
 class ProcessType(Enum):
     """Enum class to distinguish the different transition types."""
     ABSORPTION = "absorption"
     RECOMBINATION = "recombination"
 
-class Transition:
+class Transition(ReactiveModule):
     """Represents a transition between two quantum states."""
     def __init__(self,
                 state_high_energy: State,  # typically the excited or CT state
@@ -29,6 +29,8 @@ class Transition:
                 static_dipole_moment: float = 3*3.33e-30/1.6e-19,
                 lambda_inner: float = 0.02,
                 lambda_outer: float = 0.02) -> None:
+
+        super().__init__()
 
         if state_low_energy is None or state_high_energy is None:
             raise ValueError("Two valid states must be given.")
@@ -44,6 +46,7 @@ class Transition:
         self.electronic_coupling_rad_func = cpl.transition_dipole_moment
         self.electronic_coupling_nrad_func = cpl.mulliken_hush_coupling
 
+        self.start_caching()
 
     def determine_high_low_energy_state(self, state_low_energy, state_high_energy):
         """Assign which state is the higher energy state and which state is the lower energy state."""

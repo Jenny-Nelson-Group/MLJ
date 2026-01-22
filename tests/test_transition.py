@@ -10,9 +10,6 @@ def test_import_transition():
     assert hasattr(ProcessType, "__doc__")
 
 def test_transition_energy():
-    from MLJ.physics.state import State
-    from MLJ.physics.transition import Transition
-
     ground_state = State()
     excited_state = State("LE",energy=1.5)
 
@@ -28,15 +25,22 @@ def test_transition_energy():
     assert energy_difference == transition4.mean_gibbs_energy
 
 def test_huang_rhys():
-    from MLJ.physics.state import State
-    from MLJ.physics.transition import Transition
-
     ground_state = State()
     excited_state = State("LE",energy=1.5)
 
     transition = Transition(ground_state, excited_state)
     huang_rhys = transition.lambda_inner / excited_state.vib_spacing
     assert huang_rhys == transition.huang_rhys
+
+def test_huang_rhys_cache_invalidation():
+    ground_state = State()
+    excited_state = State("LE", energy=1.5)
+    transition = Transition(ground_state, excited_state, lambda_inner=0.15)
+
+    huang_rhys_1 = transition.huang_rhys
+    transition.lambda_inner = 0.07
+    huang_rhys_2 = transition.huang_rhys
+    assert huang_rhys_1 != huang_rhys_2
 
 def test_repr():
     from MLJ.physics.state import State
