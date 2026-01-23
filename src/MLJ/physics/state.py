@@ -11,7 +11,7 @@
 from MLJ.physics.basics import dirac_delta, gaussian, gaussian_norm
 from typing import Callable
 import numpy as np
-from MLJ.helpers.chaching import ReactiveModule
+from MLJ.helpers.caching import ReactiveModule
 
 DistributionFunction = Callable[[np.ndarray, float, float], np.ndarray]
 
@@ -58,8 +58,6 @@ class State(ReactiveModule):
             disorder_integration_cut_off: float = 2.5,
             disorder_distribution: 'DistributionFunction | None' = None,
         ) -> None:
-
-        super().__init__()
 
         self.index: int = index
         self.name: str = name

@@ -37,16 +37,7 @@ class ReactiveModule:
     3. **Linking**: Automatically subscribes to changes in child objects that
        implement the callback interface, creating a reactive tree.
     """
-    def __init__(self, *args, **kwargs):
-        """
-        Initializes the reactive state.
-
-        The `_initialised` flag acts as a gatekeeper. Changes made during
-        `__init__` typically don't trigger callbacks or clear caches to
-        prevent redundant processing during object setup.
-        """
-        super().__init__(*args, **kwargs)
-        self._initialised = False
+    _initialised = False
 
     def start_caching(self):
         """
@@ -134,23 +125,37 @@ class ReactiveModule:
         4. **Trigger**: If the attribute is public and the object is
            fully initialized, fire the change logic.
         """
-        # 1. Lifecycle Management: Disconnect old objects, link new ones
-        links = self.__dict__.setdefault('_attribute_links', {})
-
-        if name in links:
-            old_obj, old_link = links.pop(name)
-            if hasattr(old_obj, 'remove_callback'):
-                old_obj.remove_callback(old_link)
-
-        if value is not None and hasattr(value, 'add_callback'):
-            handler = self._on_attribute_change
-            value.add_callback(handler)
-            links[name] = (value, handler)
+        # Update links before the assignment to ensure the callback in the 'old' object is cleared
+        self._update_attribute_links(name, value)
 
         # 2. Perform the assignment
         super().__setattr__(name, value)
 
-        # 3. Trigger: If a public attribute is set after __init__, nuke and bubble
+        # Trigger invalidation if we are 'live' and the attribute is public
         # Public attributes are defined as those not starting with '_'
-        if not name.startswith('_') and getattr(self, '_initialised', False):
+        if not name.startswith('_') and self._initialised:
             self._on_attribute_change()
+
+    def _update_attribute_links(self, name: str, new_obj: any) -> None:
+        """
+        Manages the observer relationships between this object and its children.
+
+        This handles the 'handshake'—unsubscribing from the old value and
+        subscribing to the new value if it supports the callback interface.
+        """
+        # 1. get the _attribute_links dictionary if it exists or create it
+        links = self.__dict__.setdefault('_attribute_links', {})
+
+        # 2. Remove my callback from previous object,
+        # and remove it from links
+        if name in links:
+            old_obj, old_callback = links.pop(name)
+            if hasattr(old_obj, 'remove_callback'):
+                old_obj.remove_callback(old_callback)
+
+        # 2. Add my callback to the new subscribed objec,
+        # and store reference to the bound method
+        if new_obj is not None and hasattr(new_obj, 'add_callback'):
+            callback = self._on_attribute_change
+            new_obj.add_callback(callback)
+            links[name] = (new_obj, callback)

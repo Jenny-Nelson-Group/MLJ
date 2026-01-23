@@ -13,7 +13,7 @@ import MLJ.physics.coupling as cpl
 from enum import Enum
 import numpy as np
 from functools import cached_property
-from MLJ.helpers.chaching import ReactiveModule
+from MLJ.helpers.caching import ReactiveModule
 
 class ProcessType(Enum):
     """Enum class to distinguish the different transition types."""
@@ -29,8 +29,6 @@ class Transition(ReactiveModule):
                 static_dipole_moment: float = 3*3.33e-30/1.6e-19,
                 lambda_inner: float = 0.02,
                 lambda_outer: float = 0.02) -> None:
-
-        super().__init__()
 
         if state_low_energy is None or state_high_energy is None:
             raise ValueError("Two valid states must be given.")

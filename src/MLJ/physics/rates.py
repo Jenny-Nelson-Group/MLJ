@@ -14,7 +14,7 @@ from MLJ.physics.config import config
 import MLJ.physics.FCWD as fcwd
 import MLJ.physics.constants as const
 from MLJ.physics.basics import integral, boltzmann
-from MLJ.helpers.chaching import read_only_cached_property, ReactiveModule
+from MLJ.helpers.caching import read_only_cached_property, ReactiveModule
 
 import numpy as np
 
