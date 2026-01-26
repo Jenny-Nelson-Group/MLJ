@@ -61,8 +61,10 @@ class State:
         self.index: int = index
         self.name: str = name
         self.energy: float = energy
+        self.density_of_states: float = 1e5 #Density of states.
         self.number_of_vibronic_modes: int = number_of_vibronic_modes
         self.vib_spacing: float = vib_spacing
+    
         self.disorder_integration_cut_off = disorder_integration_cut_off
 
         if (disorder_number_of_states == 1 or disorder_sigma == 0):
