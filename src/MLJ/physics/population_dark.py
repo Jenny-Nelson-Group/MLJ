@@ -3,7 +3,7 @@ from typing import List, Union, Tuple
 from MLJ.physics.config import config
 import MLJ.physics.constants as const
 
-def dark_population(state) -> np.ndarray:
+def dark_population(state) -> float:
     """
     Calculate the thermal (dark) population of a specific state.
 
@@ -21,11 +21,11 @@ def dark_population(state) -> np.ndarray:
     np.ndarray
         The Boltzmann-weighted population.
     """
-    temperatures = config.temperatures_K
+    temperature = config.temperatures_K #just a single temperature?
     kB = const.BOLTZMANN_CONSTANT_EV
     
     # Calculate boltzmann weighted DoS
-    boltzmann_weighted_dos = state.density_of_states * np.exp(-state.energy / (kB * temperatures))
+    boltzmann_weighted_dos = state.density_of_states * np.exp(-state.energy / (kB * temperature))
     
     #Square to obtain population
     return boltzmann_weighted_dos**2
@@ -33,7 +33,7 @@ def dark_population(state) -> np.ndarray:
 def states_dark_population(
     states: List, 
     weights: List[float] = None
-) -> Union[np.ndarray, List[np.ndarray]]:
+) -> Union[float, List[float]]:
     """
     Calculate the dark population for one or more states with optional weighting.
     """
