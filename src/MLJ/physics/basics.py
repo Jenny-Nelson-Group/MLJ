@@ -1,5 +1,20 @@
 import numpy as np
+from scipy.special import genlaguerre
 import MLJ.physics.constants as const
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
+    """Core physics calculation: generates the 2D Franck-Condon factor base."""
+    laguerre_base = np.zeros((N_vib_initial + 1, N_vib_final + 1))
+    for i in range(N_vib_initial + 1):
+        j = np.arange(i, N_vib_final + 1)
+        k = j - i
+        poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
+        laguerre_base[i, j] = poly
+
+    laguerre_base.setflags(write=False)
+    return laguerre_base
 
 def gaussian(x, mean, sigma):
     """Returns non-normalised Gaussian or 1 if sigma is 0."""
@@ -21,14 +36,16 @@ def dirac_delta(num: int, pos=0):
     weights[delta_index] = 1
     return weights
 
-
 def boltzmann(energy, temperature):
+    """Calculate the Boltzmann factor with NumPy broadcasting."""
     return np.exp(
-        -energy[:, None] / (temperature[None, :] * const.BOLTZMANN_CONSTANT_EV)
+        -energy / (temperature * const.BOLTZMANN_CONSTANT_EV)
     )
 
-def integral(y, x, axis=0):
-    if y.shape[0] == 1:
-        return y[0]
-    
-    return np.trapezoid(y, x=x, axis=axis)
+def integral(y, x=None, axis=-1):
+    y = np.asarray(y)
+
+    if y.shape[axis] == 1:
+        return np.squeeze(y, axis=axis)
+
+    return np.trapezoid(y=y, x=x, axis=axis)

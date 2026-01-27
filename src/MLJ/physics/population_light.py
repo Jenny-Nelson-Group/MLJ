@@ -1,0 +1,3 @@
+
+
+# rate equations detailed balance

@@ -11,10 +11,11 @@
 from MLJ.physics.basics import dirac_delta, gaussian, gaussian_norm
 from typing import Callable
 import numpy as np
+from MLJ.helpers.caching import ReactiveModule
 
 DistributionFunction = Callable[[np.ndarray, float, float], np.ndarray]
 
-class State:
+class State(ReactiveModule):
     """
     Quantum state with vibronic structure and energetic disorder.
 
@@ -81,11 +82,13 @@ class State:
         self.energy_grid: np.ndarray = self.set_disorder_grid()
         self.disorder_weights = self.set_disorder_weights()
 
+        self.start_caching()
+
     def set_disorder_grid(self) -> np.ndarray:
         cut_off = self.disorder_integration_cut_off * self.disorder_sigma
         energy_grid = np.linspace(self.energy - cut_off, self.energy + cut_off, self.disorder_number_of_states)
         return energy_grid
-    
+
     def set_disorder_weights(self) -> np.ndarray:
         energy_grid = self.energy_grid
         weights = self.disorder_distribution(state=self, x=energy_grid)
@@ -105,3 +108,10 @@ def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
     with width `state.disorder_sigma`.
     """
     return gaussian_norm(x, state.energy, state.disorder_sigma)
+
+def gaussian_distribution_nonnorm(state: State, x: np.ndarray) -> np.ndarray:
+    """
+    Default energetic disorder distribution: Gaussian around `state.energy`
+    with width `state.disorder_sigma`.
+    """
+    return gaussian(x, state.energy, state.disorder_sigma)

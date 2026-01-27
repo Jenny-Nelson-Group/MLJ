@@ -12,13 +12,14 @@ import numpy as np
 from scipy.special import factorial, genlaguerre
 from typing import Sequence
 from MLJ.physics.config import config
-from MLJ.physics.transition import TransitionType
-from MLJ.physics.transition import Transition
+from MLJ.physics.transition import Transition, ProcessType
 import MLJ.physics.constants as const
+from MLJ.physics.basics import boltzmann, laguerre_2d
 
 def fcwd(photon_energies: Sequence[float],
          transition: Transition,
-         temperatures: np.ndarray = None,
+         temperatures: np.ndarray,
+         process: ProcessType,
          ) -> Sequence[float]:
     """
     Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
@@ -26,22 +27,20 @@ def fcwd(photon_energies: Sequence[float],
 
     Parameters
     ----------
-    photon_energies : array-like
-        Photon energies ω in eV.
+    photon_energies : np.ndarray
+        1D array of photon energies [eV] at which to evaluate spectral rates.
     transition : Transition
-        Transition object containing λ_o, Huang-Rhys factor S, level spacing hW,
-        free energy difference E, and vibronic state dimensions.
-    transition_type : str ('abs' or 'rec')
-        'abs' => absorption
-        'rec' => emission / recombination
+       Containing states, reorganisation energies, coupling strengths, and disorder parameters.
+    temperatures : np.ndarray
+        1D array of temperatures [K]
+    process : ProcessType
+        The direction of the transition (ProcessType.ABSORPTION or ProcessType.RECOMBINATION).
 
     Returns
     -------
-    fcwd : array, shape(N_omegas,N_disorder_energies,N_temperatures)
+    fcwd : array, shape(N_omegas, N_disorder_energies, N_temperatures)
         FCWD evaluated at each photon energy (averaged over vibronic states).
     """
-
-    temperatures = config.temperatures_K if temperatures is None else temperatures
 
     # --- Load constants and transition parameters ---
     outer_reorganisation_energy = transition.lambda_outer        # outer reorganization energy
@@ -50,39 +49,30 @@ def fcwd(photon_energies: Sequence[float],
     vib_spacing = transition.state_high_energy.vib_spacing        # vibrational quantum (hΩ) (eV)
     boltzmann_eV = const.BOLTZMANN_CONSTANT_EV
 
-    transition_type = transition.transition_type
-
     # Assign the number of vibrational modes to the initial and final states
-    match transition_type:
-        case TransitionType.ABSORPTION:
+    match process:
+        case ProcessType.ABSORPTION:
             N_vib_initial = transition.state_low_energy.number_of_vibronic_modes
             N_vib_final   = transition.state_high_energy.number_of_vibronic_modes
-        case TransitionType.RECOMBINATION:
+        case ProcessType.RECOMBINATION:
             N_vib_initial = transition.state_high_energy.number_of_vibronic_modes
             N_vib_final   = transition.state_low_energy.number_of_vibronic_modes
 
     v_i = np.arange(N_vib_initial + 1)
     v_f = np.arange(N_vib_final + 1)
 
-    # Build 5D meshgrid to enable vectorization of the calculations
-    v_i_mat, v_f_mat, photon_energies_mat, gibbs_energy_grid_mat, temperature_mat = np.meshgrid(
-        v_i, v_f,
-        photon_energies,
-        gibbs_energy_grid,
-        temperatures,
-        indexing='ij')
+    # 1. Define the 'Shapes' of your axes using None
+    # Dimension Order: [v_i, v_f, E_phot, E_grid, Temp]
+    v_i_mat     = v_i[:, None, None, None, None]               # (Ni, 1, 1, 1, 1)
+    v_f_mat     = v_f[None, :, None, None, None]               # (1, Nf, 1, 1, 1)
+    photon_energies_mat    = photon_energies[None, None, :, None, None]   # (1, 1, Ne, 1, 1)
+    gibbs_energy_grid_mat  = gibbs_energy_grid[None, None, None, :, None] # (1, 1, 1, Ng, 1)
+    temperature_mat        = temperatures[None, None, None, None, :]      # (1, 1, 1, 1, Nt)
 
     vib_diff = v_f_mat - v_i_mat
 
-    # 2D Laguerre table (v_i × v_f)
-    laguerre_base = np.zeros((N_vib_initial + 1, N_vib_final + 1))
-    for i in range(N_vib_initial + 1):
-        j = np.arange(i, N_vib_final + 1)
-        k = j - i
-        poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
-        laguerre_base[i, j] = poly
-
-    # Now broadcast to the 5D meshgrid shape
+    # 2D Laguerre table (v_i × v_f) and broadcast to right shape
+    laguerre_base = laguerre_2d(N_vib_initial, N_vib_final, huang_rhys)
     laguerre_mat = laguerre_base[:, :, None, None, None]
 
     # Huang Rhys Part
@@ -94,17 +84,17 @@ def fcwd(photon_energies: Sequence[float],
     )
 
     # Exponential
-    sign = 1 if transition_type is TransitionType.ABSORPTION else -1
+    sign = 1 if process is ProcessType.ABSORPTION else -1
     factor2 = (np.exp(
             -(-sign*photon_energies_mat + sign*gibbs_energy_grid_mat + outer_reorganisation_energy + vib_diff * vib_spacing) ** 2
             / (4 * outer_reorganisation_energy * boltzmann_eV * temperature_mat)
         ))
 
     # Boltzmann population of the initial state
-    factor3 = np.exp(-(v_i_mat * vib_spacing) / (boltzmann_eV * temperature_mat))
+    boltzmann_initial_vib_states = boltzmann(energy=v_i_mat * vib_spacing, temperature=temperature_mat)
 
     normalisation = 1 / np.sqrt(4 * np.pi * outer_reorganisation_energy * boltzmann_eV  * temperature_mat)
-    fcwd_n = normalisation * factor1 * factor2 * factor3
+    fcwd_n = normalisation * factor1 * factor2 * boltzmann_initial_vib_states
 
     # Sum over v_i and v_f, as they are first and second dimension generated by np.meshgrid
     fcwd = np.sum(fcwd_n, axis=(0, 1))
