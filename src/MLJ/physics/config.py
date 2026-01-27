@@ -20,6 +20,7 @@ class _Config:
     that are defined in this file.
     """
     temperatures_K: np.ndarray = field(default_factory=lambda: np.array([300.0]))
+    photon_density: float = 1
     laser_power: float = 1.7 #[Watts]
     laser_broadening: float = 0.1 #[dimensionless]
 

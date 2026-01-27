@@ -3,41 +3,68 @@ from typing import List, Union, Tuple
 from MLJ.physics.config import config
 import MLJ.physics.constants as const
 
-def dark_population(state) -> float:
+def dark_population(state, temperatures: np.ndarray = None) -> np.ndarray:
     """
     Calculate the thermal (dark) population of a specific state.
 
-    Uses the Boltzmann distribution to weight the Density of States (DoS) 
+    Uses the Boltzmann distribution to weight the scalar Density of States (DoS) 
     based on the system temperature.
 
     Parameters
     ----------
     state : Object
-        An object containing .density_of_states (np.ndarray) and 
-        .energy (float or np.ndarray) in eV.
+        An object representing the electronic state.
+    temperatures : np.ndarray, optional
+        Array of temperatures in Kelvin. Shape: (M,). 
+        If None, defaults to config.temperatures_K.
 
     Returns
     -------
     np.ndarray
-        The Boltzmann-weighted population.
+        The Boltzmann-weighted population [dimensionless/normalized density].
+        Shape: (M,), where each element corresponds to a temperature in the 
+        input 'temperatures' array.
     """
-    temperature = config.temperatures_K #just a single temperature?
+    temperatures = config.temperatures_K if temperatures is None else temperatures 
     kB = const.BOLTZMANN_CONSTANT_EV
     
     # Calculate boltzmann weighted DoS
-    boltzmann_weighted_dos = state.density_of_states * np.exp(-state.energy / (kB * temperature))
+    boltzmann_weighted_dos = state.density_of_states * np.exp(-state.energy / (kB * temperatures))
     
-    #Square to obtain population
+    # Square to obtain population
     return boltzmann_weighted_dos**2
 
 def states_dark_population(
     states: List, 
+    temperatures: np.ndarray = None,
     weights: List[float] = None
-) -> Union[float, List[float]]:
+) -> Union[np.ndarray, List[np.ndarray]]:
     """
     Calculate the dark population for one or more states with optional weighting.
+
+    Parameters
+    ----------
+    states : List[Object]
+        A list of state objects .
+    temperatures : np.ndarray, optional
+        Array of temperatures in Kelvin. Shape: (M,).
+        If None, defaults to config.temperatures_K.
+    weights : List[float], optional
+        Scalar weights for each state in `states`. If None, defaults to 1/N 
+        weighting. Must be length equal to `states`.
+
+    Returns
+    -------
+    np.ndarray or List[np.ndarray]
+        If a single state is provided: 
+            Returns a single np.ndarray of shape (M,).
+        If multiple states are provided: 
+            Returns a list of length L (number of states), where each element 
+            is an np.ndarray of shape (M,) representing that state's 
+            population [dimensionless] across all temperatures.
     """
-    # Fix: Default weights to 1/N for each state
+    temperatures = config.temperatures_K if temperatures is None else temperatures 
+    
     if weights is None:
         n_states = len(states)
         weights = [1.0 / n_states] * n_states
@@ -46,7 +73,7 @@ def states_dark_population(
         raise ValueError(f"Mismatch: {len(states)} states but {len(weights)} weights.")
 
     # Calculate populations
-    results = [w * dark_population(s) for s, w in zip(states, weights)]
+    results = [w * dark_population(s, temperatures) for s, w in zip(states, weights)]
 
     # Return single array if one state, else return the list
     return results[0] if len(results) == 1 else results
