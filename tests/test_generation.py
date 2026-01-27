@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from MLJ.physics.config import config
-from MLJ.physics.generation import laser_intensity_gaussian, excited_state_generation
+from MLJ.physics.generation import laser_profile_gaussian, excited_state_generation
 
 @pytest.fixture
 def energy_grid():
@@ -9,21 +9,21 @@ def energy_grid():
     return np.linspace(1.0, 3.0, 500)
 
 def test_laser_intensity_peak(energy_grid):
-    """Verify that the laser intensity peaks at config.laser_power."""
-    config.laser_power = 2.0
+    """Verify that the laser intensity peaks at config.laser_mean_energy."""
+    config.laser_mean_energy = 2.0
     config.laser_broadening = 0.1
-    
-    intensity = laser_intensity_gaussian(energy_grid)
-    
+
+    intensity = laser_profile_gaussian(energy_grid)
+
     # The maximum intensity should be at the index closest to 2.0 eV
     peak_idx = np.argmax(intensity)
     assert np.isclose(energy_grid[peak_idx], 2.0, atol=0.01)
 
 def test_excited_state_generation_logic(energy_grid):
     """Test the integration of k_abs and laser intensity."""
-    config.laser_power = 2.0
+    config.laser_mean_energy = 2.0
     config.laser_broadening = 0.2
-    
+
     # Case 1: k_abs is zeros -> no excited states
     k_abs_zero = np.zeros_like(energy_grid)
     gen_zero = excited_state_generation(k_abs_zero, energy_grid)
@@ -38,7 +38,7 @@ def test_math_mismatch_error():
     """Ensure behavior when arrays don't match."""
     energy_short = np.array([1.0, 2.0])
     k_abs_long = np.array([1.0, 2.0, 3.0])
-    
+
     with pytest.raises(ValueError):
         # This should fail during multiplication or inside the integral function
         excited_state_generation(k_abs_long, energy_short)
