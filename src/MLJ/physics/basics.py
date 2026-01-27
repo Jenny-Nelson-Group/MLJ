@@ -38,6 +38,8 @@ def dirac_delta(num: int, pos=0):
 
 def boltzmann(energy, temperature):
     """Calculate the Boltzmann factor with NumPy broadcasting."""
+    energy = np.asarray(energy, dtype=float)
+    temperature = np.asarray(temperature, dtype=float)
     return np.exp(
         -energy / (temperature * const.BOLTZMANN_CONSTANT_EV)
     )
