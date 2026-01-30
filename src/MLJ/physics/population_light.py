@@ -78,7 +78,28 @@ def states_light_population(
     dark_population: Sequence[np.ndarray | float],
     generation_rate: Sequence[np.ndarray | float] | None = None,
 ) -> np.ndarray:
-    """Solve steady-state rate equations for the given conditions."""
+    """
+    Solve steady-state rate equations for a multi-state system across all conditions.
+
+    Parameters
+    ----------
+    transition_matrix : TransitionMatrix
+        Assembled system matrix of shape (n_conditions, n_states, n_states).
+    dark_population : Sequence[np.ndarray | float]
+        Thermal equilibrium populations for each state. Length must be n_states.
+    generation_rate : Sequence[np.ndarray | float], optional
+        External generation rates for each state. If None, defaults to zero.
+
+    Returns
+    -------
+    np.ndarray
+        Steady-state populations with shape (n_states, n_conditions).
+
+    Raises
+    ------
+    ValueError
+        If input lengths or condition counts do not match the transition matrix.
+    """
     # --- 1. Determine input shape consistency
     pop_dark = np.array([np.atleast_1d(p) for p in dark_population])
 
