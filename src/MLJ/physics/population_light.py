@@ -1,80 +1,103 @@
 import numpy as np
-from typing import Sequence
-from dataclasses import dataclass
+from typing import Sequence, Dict, Tuple
+from dataclasses import dataclass, field
 
 
-@dataclass
-class StateBundle:
-    """Represents a single physical state/level."""
-
-    dark_population: np.ndarray | float
-    generation_rate: np.ndarray | float
-    recombination_rate: np.ndarray | float
-
-
+@dataclass(frozen=True)
 class TransitionMatrix:
-    def __init__(self, n_states: int, n_conditions: int):
-        self.n_states = n_states
-        self.n_conditions = n_conditions
-        self.k_transition = np.zeros((n_states, n_states, n_conditions))
-        self.k_recombination = np.zeros((n_states, n_conditions))
+    """
+    An immutable representation of a state transition system for steady-state solvers.
 
-    def set_recombination(self, recombination_rates: Sequence[np.ndarray | float]):
-        """Standardizes input sequence [krec1, krec2, ...] to (n_states, n_conditions)."""
-        self.k_recombination = np.array(
-            [np.broadcast_to(r, (self.n_conditions,)) for r in recombination_rates]
-        )
+    This class standardizes recombination rates and transition tensors into a
+    batch-first system matrix suitable for `np.linalg.solve`. It automatically
+    infers dimensions from the provided input sequences.
 
-    def set_transitions(self, rates_map: dict):
-        """Pass a map {(from_idx, to_idx): rate_array (with length conditions)}."""
-        for (i, j), rate in rates_map.items():
+    Attributes:
+        rates (Sequence[np.ndarray | float]): Recombination rates to ground for each state.
+            If arrays are provided, their length defines 'n_conditions'.
+        transitions (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
+            (from_state, to_state) indices to transition rates.
+        k_recombination (np.ndarray): Standardized recombination rates with
+            shape (n_states, n_conditions).
+        full_system_matrix (np.ndarray): The assembled batch-first matrix
+            for the solver with shape (n_conditions, n_states, n_states).
+
+    Notes:
+        The system matrix $A$ is constructed such that for each condition $m$:
+        - Off-diagonal: $A_{i,j} = -k_{j \to i}$
+        - Diagonal: $A_{i,i} = k_{rec, i} + \sum_{j \neq i} k_{i \to j}$
+    """
+
+    rates: Sequence[np.ndarray | float]
+    transitions: Dict[Tuple[int, int], np.ndarray | float] = field(default_factory=dict)
+    k_recombination: np.ndarray = field(init=False)
+    full_system_matrix: np.ndarray = field(init=False)
+
+    def __post_init__(self):
+        # 1. Standardize recombination (k_recombination)
+        # Check that all elements in rates and transitions have the same length
+        all_rates = list(self.rates) + list(self.transitions.values())
+        if len({len(x) if isinstance(x, np.ndarray) else 1 for x in all_rates}) > 1:
+            raise ValueError("Provided recombination rates have inconsistent lengths.")
+
+        k_rec = np.array([np.atleast_1d(r) for r in self.rates])
+        n_states, n_cond = k_rec.shape
+
+        # 2. Build transition tensor (n_states, n_states, n_conditions)
+        k_trans = np.zeros((n_states, n_states, n_cond))
+        for (i, j), rate in self.transitions.items():
             if i != j:
-                self.k_transition[i, j, :] = rate
+                k_trans[i, j, :] = rate
+
+        # 3. Assemble system matrix A
+        sum_out = k_trans.sum(axis=1)
+        sys_mat = -k_trans.transpose(1, 0, 2)
+        diag_idx = np.arange(n_states)
+        sys_mat[diag_idx, diag_idx, :] = k_rec + sum_out
+
+        # 4. Finalize Batch-First Matrix: (n_conditions, n_states, n_states)
+        full_system_matrix = np.moveaxis(sys_mat, -1, 0)
+
+        # Safety: Lock the internal arrays
+        k_rec.flags.writeable = False
+        full_system_matrix.flags.writeable = False
+
+        # Apply to frozen instance
+        object.__setattr__(self, "k_recombination", k_rec)
+        object.__setattr__(self, "full_system_matrix", full_system_matrix)
 
     @property
-    def full_system_matrix(self) -> np.ndarray:
-        """
-        Builds the Batch-First (M, L, L) matrix for the solver.
-        A_ij = -k_{j->i}
-        A_ii = k_recomb_i + sum_j(k_{i->j})
-        """
-        # 1. Total rate leaving each state i: shape (L, M)
-        sum_out = self.k_transition.sum(axis=1)
-
-        # 2. Build the (n_states, n_states, n_conditions) matrix
-        # Swap -> A_ij = -K_ji
-        transition_matrix = -self.k_transition.transpose(1, 0, 2)
-        diag_idx = np.arange(self.n_states)
-        transition_matrix[diag_idx, diag_idx, :] = self.k_recombination + sum_out
-
-        # 3. Final transpose to Batch-First (n_conditions, n_states, n_states) for np.linalg.solve
-        return np.moveaxis(transition_matrix, -1, 0)
+    def shape(self) -> Tuple[int, int]:
+        """Returns the shape as Tuple (n_states, n_conditions)."""
+        n_cond, n_states, _ = self.full_system_matrix.shape
+        return (n_states, n_cond)
 
 
 def states_light_population(
-    states: Sequence[StateBundle], transition_matrix: TransitionMatrix
+    transition_matrix: TransitionMatrix,
+    dark_population: Sequence[np.ndarray | float],
+    generation_rate: Sequence[np.ndarray | float] | None = None,
 ) -> np.ndarray:
-    """
-    Solve steady-state rate equations for a collection of StateBundles.
-    """
-    # --- 1. Determine n_states and n_conditions
-    n_states = len(states)
-    if n_states == 0:
-        raise ValueError("At least one StateBundle must be provided.")
+    """Solve steady-state rate equations for the given conditions."""
+    # --- 1. Determine input shape consistency
+    pop_dark = np.array([np.atleast_1d(p) for p in dark_population])
 
-    n_conditions = np.atleast_1d(states[0].dark_population).size
+    if generation_rate is None:
+        gen_rate = np.zeros_like(pop_dark)
+    else:
+        gen_rate = np.array([np.atleast_1d(g) for g in generation_rate])
+
+    if pop_dark.shape != gen_rate.shape:
+        raise ValueError("Shape of dark population and generation rates don't match.")
+
+    if transition_matrix.shape != pop_dark.shape:
+        raise ValueError("Matrix dimensions and shape of pop/gen don'r match.")
 
     # --- 2. Create parameter arrays from input bundles
-    population_dark = np.array(
-        [np.broadcast_to(s.dark_population, (n_conditions,)) for s in states]
-    )
-    generation_rate = np.array(
-        [np.broadcast_to(s.generation_rate, (n_conditions,)) for s in states]
-    )
     recombination_rate = transition_matrix.k_recombination
 
-    # --- 3. Build Source Vector b (n_conditions, n_states) and get system matrix
-    source_terms = (generation_rate + recombination_rate * population_dark).T
+    # --- 3. Build Source Vsector b (n_conditions, n_states) and get system matrix
+    source_terms = (gen_rate + recombination_rate * pop_dark).T[..., np.newaxis]
     system_matrix = transition_matrix.full_system_matrix
-
-    return np.linalg.solve(system_matrix, source_terms).T.squeeze()
+    result = np.linalg.solve(system_matrix, source_terms)
+    return result.T.squeeze()
