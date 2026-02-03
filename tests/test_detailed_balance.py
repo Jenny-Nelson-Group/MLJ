@@ -18,7 +18,7 @@ def test_detailed_balance_preserves_boltzmann():
 
     rates = [0.1, 0.1]  # Recombination to ground
     transitions = {(0, 1): k_LECT, (1, 0): k_CTLE}
-    tm = TransitionMatrix(rates=rates, transitions=transitions)
+    tm = TransitionMatrix(rates_to_ground=rates, transitions=transitions)
 
     # 3. Define P_dark following Boltzmann distribution
     # P = DoS * exp(-E/kbT) -- assuming equal DoS and weight 1 here
@@ -33,8 +33,6 @@ def test_detailed_balance_preserves_boltzmann():
 
     # 5. Assert: The solver should not shift the populations
     expected = np.array([p0, p1])
-    print(expected)
-    print(result)
     np.testing.assert_allclose(
         result,
         expected,
