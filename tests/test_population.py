@@ -32,6 +32,19 @@ def test_single_le_state_population():
     assert np.all(pop >= 0), "Population cannot be negative"
 
 
+def test_single_le_state_temperatures():
+    """Test Case 1: Single LE State."""
+    # Ensure a fixed temperature for reproducibility
+    le_state = create_test_state(name="LE", energy=1.5)
+
+    # Run
+    pop = states_dark_population([le_state], temperatures=np.array([200.0, 300.0]))
+
+    # Assertions
+    assert pop.shape == (1,2), "Should match (n_states, n_temperatures)"
+    assert pop.size > 0, "Population array should not be empty"
+    assert np.all(pop >= 0), "Population cannot be negative"
+
 def test_le_ct_two_state_weighting():
     """Test Case 2: LE and CT states with."""
     # LE at 1.5eV, CT at 1.8eV (CT is higher in energy, so lower population)

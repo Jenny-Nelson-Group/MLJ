@@ -44,5 +44,5 @@ def states_dark_population(
         raise ValueError(f"Mismatch: {n_states} states but {len(weights)} weights.")
 
     # calculate and return weighted dark populations
-    populations = dos * boltzmann(energies - voltage, temperatures)
-    return populations * weights[:, None]
+    populations = dos * boltzmann(energies - voltage, temperatures) #(n_states,n_temps)
+    return (populations * weights[:, None])

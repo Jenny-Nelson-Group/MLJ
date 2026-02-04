@@ -62,8 +62,8 @@ def boltzmann(energy, temperature):
     -------
     ndarray or float
         The Boltzmann factor exp(-E / kT). Shape follows standard
-        broadcasting, except for the 1D-1D case which returns (N, M)
-        for convenience.
+        broadcasting, except for the 1D-1D case which returns
+        (n_energies, n_temps) for convenience.
     """
     energy = np.asarray(energy, dtype=float)
     temperature = np.asarray(temperature, dtype=float)
