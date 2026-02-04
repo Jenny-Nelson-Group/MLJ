@@ -11,6 +11,14 @@
 
 __version__ = "0.0.1"
 
+# import and expose
+from MLJ.physics.state import State
+from MLJ.physics.transition import Transition
+from MLJ.physics.rates import Rates
+
+__all__ = ["State", "Transition", "Rates"]
+
+
 def run(*, example=False, **kwargs):
     """Runs the program with given arguments."""
 
@@ -18,5 +26,5 @@ def run(*, example=False, **kwargs):
         print("MLJ executed with example keyword.")
         print(kwargs)
     else:
-        print("MLJ executed.") 
+        print("MLJ executed.")
         print(kwargs)
