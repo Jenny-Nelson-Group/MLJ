@@ -62,5 +62,5 @@ def excited_state_generation(
     """
     # Generate the intensity profile using the passed function
     laser_intensity = laser_intenstiy_profile_func(photon_energies)
-
-    return integral(k_abs * laser_intensity, photon_energies)
+    integrand = k_abs.reshape(k_abs.shape[0], -1) * laser_intensity[:,None]
+    return integral(integrand, photon_energies, axis=0)

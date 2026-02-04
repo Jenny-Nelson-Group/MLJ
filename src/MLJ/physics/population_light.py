@@ -112,7 +112,7 @@ def states_light_population(
         raise ValueError("Shape of dark population and generation rates don't match.")
 
     if transition_matrix.shape != pop_dark.shape:
-        raise ValueError("Matrix dimensions and shape of pop/gen don'r match.")
+        raise ValueError("Transition Matrix dimensions and population don't match.")
 
     # --- 2. Create parameter arrays from input bundles
     recombination_rate = transition_matrix.k_recombination

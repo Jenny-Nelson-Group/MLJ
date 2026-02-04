@@ -25,13 +25,13 @@ def emission(
     populations = np.array([np.atleast_1d(p) for p in populations])
     recombination_rates = np.array([np.atleast_1d(r) for r in recombination_rates])
 
-    if populations.shape != recombination_rates.shape:
+    if populations.shape != recombination_rates.shape[::2]:
         raise ValueError(
             f"Shape mismatch: populations {populations.shape} vs rates {recombination_rates.shape}"
         )
 
     # 2. Flux calculation: sum over states (axis 0)
-    return np.sum(populations * recombination_rates, axis=0)
+    return np.sum(populations[:, None, :] * recombination_rates, axis=0)
 
 
 # Absorption spectrum: to be implemented

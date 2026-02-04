@@ -34,6 +34,25 @@ def test_excited_state_generation_logic(energy_grid):
     gen_const = excited_state_generation(k_abs_const, energy_grid)
     assert gen_const > 0
 
+def test_1d():
+    """Check that 1d arrays are integrated to a scalar."""
+    energy = np.array([1.3, 1.4, 15])
+    k_abs = np.array([1.0, 2.0, 3.0])
+
+    gen = excited_state_generation(k_abs, energy)
+    print(gen)
+    assert gen.shape == (1,)
+
+def test_2d():
+    """Check 2 temperatures leads to 2d output."""
+    energy = np.array([1.3, 1.4, 15])
+    k_abs = np.array([[1.0, 2.0],[1.0, 2.0],[1.0, 2.0]])
+
+    gen = excited_state_generation(k_abs, energy)
+    print(gen)
+    assert gen.shape == (2,)
+
+
 def test_math_mismatch_error():
     """Ensure behavior when arrays don't match."""
     energy_short = np.array([1.0, 2.0])
