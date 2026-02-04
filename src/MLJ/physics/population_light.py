@@ -13,14 +13,14 @@ class TransitionMatrix:
     infers dimensions from the provided input sequences.
 
     Attributes:
-        rates (Sequence[np.ndarray | float]): Recombination rates to ground for each state.
-            If arrays are provided, their length defines 'n_conditions'.
+        rates_to_ground (Sequence[np.ndarray | float]): Recombination rates to ground for each state.
+            If arrays are provided, their length defines 'n_temperatures'.
         transitions (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
             (from_state, to_state) indices to transition rates.
         k_recombination (np.ndarray): Standardized recombination rates with
-            shape (n_states, n_conditions).
+            shape (n_states, n_temperatures).
         full_system_matrix (np.ndarray): The assembled batch-first matrix
-            for the solver with shape (n_conditions, n_states, n_states).
+            for the solver with shape (n_temperatures, n_states, n_states).
 
     Notes:
         The system matrix $A$ is constructed such that for each condition $m$:
@@ -28,7 +28,7 @@ class TransitionMatrix:
         - Diagonal: $A_{i,i} = k_{rec, i} + \sum_{j \neq i} k_{i \to j}$
     """
 
-    rates: Sequence[np.ndarray | float]
+    rates_to_ground: Sequence[np.ndarray | float]
     transitions: Dict[Tuple[int, int], np.ndarray | float] = field(default_factory=dict)
     k_recombination: np.ndarray = field(init=False)
     full_system_matrix: np.ndarray = field(init=False)
@@ -36,14 +36,14 @@ class TransitionMatrix:
     def __post_init__(self):
         # 1. Standardize recombination (k_recombination)
         # Check that all elements in rates and transitions have the same length
-        all_rates = list(self.rates) + list(self.transitions.values())
+        all_rates = list(self.rates_to_ground) + list(self.transitions.values())
         if len({len(x) if isinstance(x, np.ndarray) else 1 for x in all_rates}) > 1:
             raise ValueError("Provided recombination rates have inconsistent lengths.")
 
-        k_rec = np.array([np.atleast_1d(r) for r in self.rates])
-        n_states, n_cond = k_rec.shape
+        k_rec_ground = np.array([np.atleast_1d(r) for r in self.rates_to_ground])
+        n_states, n_cond = k_rec_ground.shape
 
-        # 2. Build transition tensor (n_states, n_states, n_conditions)
+        # 2. Build transition tensor (n_states, n_states, n_temperatures)
         k_trans = np.zeros((n_states, n_states, n_cond))
         for (i, j), rate in self.transitions.items():
             if i != j:
@@ -53,22 +53,22 @@ class TransitionMatrix:
         sum_out = k_trans.sum(axis=1)
         sys_mat = -k_trans.transpose(1, 0, 2)
         diag_idx = np.arange(n_states)
-        sys_mat[diag_idx, diag_idx, :] = k_rec + sum_out
+        sys_mat[diag_idx, diag_idx, :] = k_rec_ground + sum_out
 
-        # 4. Finalize Batch-First Matrix: (n_conditions, n_states, n_states)
+        # 4. Finalize Batch-First Matrix: (n_temperatures, n_states, n_states)
         full_system_matrix = np.moveaxis(sys_mat, -1, 0)
 
         # Safety: Lock the internal arrays
-        k_rec.flags.writeable = False
+        k_rec_ground.flags.writeable = False
         full_system_matrix.flags.writeable = False
 
         # Apply to frozen instance
-        object.__setattr__(self, "k_recombination", k_rec)
+        object.__setattr__(self, "k_recombination", k_rec_ground)
         object.__setattr__(self, "full_system_matrix", full_system_matrix)
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """Returns the shape as Tuple (n_states, n_conditions)."""
+        """Returns the shape as Tuple (n_states, n_temperatures)."""
         n_cond, n_states, _ = self.full_system_matrix.shape
         return (n_states, n_cond)
 
@@ -84,7 +84,7 @@ def states_light_population(
     Parameters
     ----------
     transition_matrix : TransitionMatrix
-        Assembled system matrix of shape (n_conditions, n_states, n_states).
+        Assembled system matrix of shape (n_temperatures, n_states, n_states).
     dark_population : Sequence[np.ndarray | float]
         Thermal equilibrium populations for each state. Length must be n_states.
     generation_rate : Sequence[np.ndarray | float], optional
@@ -93,7 +93,7 @@ def states_light_population(
     Returns
     -------
     np.ndarray
-        Steady-state populations with shape (n_states, n_conditions).
+        Steady-state populations with shape (n_states, n_temperatures).
 
     Raises
     ------
@@ -117,7 +117,7 @@ def states_light_population(
     # --- 2. Create parameter arrays from input bundles
     recombination_rate = transition_matrix.k_recombination
 
-    # --- 3. Build Source Vsector b (n_conditions, n_states) and get system matrix
+    # --- 3. Build Source Vsector b (n_temperatures, n_states) and get system matrix
     source_terms = (gen_rate + recombination_rate * pop_dark).T[..., np.newaxis]
     system_matrix = transition_matrix.full_system_matrix
     result = np.linalg.solve(system_matrix, source_terms)
