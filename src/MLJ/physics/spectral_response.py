@@ -51,10 +51,10 @@ def absorption(
     ----------
     photon_energies : np.ndarray
         1D array of photon energies
-        Shape: (n_photons,)
+        Shape: (n_photon_energies,)
     spectral_absorption_rates : np.ndarray
         The transition rate density per unit energy for each state/condition.
-        Shape: (n_photons, n_conditions, n_states)
+        Shape: (n_states, n_photon_energies, n_temps)
     weights : Sequence[float], optional
         Statistical weights for each electronic state.
         Defaults to uniform weighting (1/n_states).
@@ -69,10 +69,15 @@ def absorption(
     -------
     total_absorption : np.ndarray
         The weighted macroscopic absorption coefficient alpha.
-        Shape: (n_photons, n_conditions)
+        Shape: (n_photon_energies, n_temps)
         Units: [m^-1] (if input units are SI).
     """
-    n_energies, n_cond, n_states = spectral_absorption_rates.shape
+    spectral_absorption_rate_shape = spectral_absorption_rates.shape
+
+    # Check that absorption shape has three dimensions
+    assert len(spectral_absorption_rate_shape) == 3, "Array must have 3 dimensions"
+
+    n_states, n_photon_energies, n_temps = spectral_absorption_rate_shape
     refractive_index = (
         refractive_index if refractive_index is not None else config.refractive_index
     )
@@ -86,15 +91,14 @@ def absorption(
         REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2
     ) / 4
 
-    if weights is None:
-        w = np.full(n_states, 1.0 / n_states)
-    else:
-        w = np.asarray(weights)
+    weights = np.asarray(weights if weights is not None else [1 / n_states] * n_states)
+    # Reshape weights to match dimensionality of n_states
+    weights = weights.reshape(-1, 1, 1)
 
-    # Reshape energy to (n_energies, 1, 1)
-    energy_scaling = (1.0 / photon_energies**2).reshape(-1, 1, 1)
+    # Reshape energy to (1, n_photon_energies, 1)
+    energy_scaling = (1.0 / photon_energies**2).reshape(1, -1, 1)
 
-    # Calculate state-specific alpha: (n_photons, n_conditions, n_states)
+    # Calculate state-specific alpha: (n_states, n_photon_energies, n_temps)
     alpha_states = (
         spectral_absorption_rates
         * refractive_index
@@ -103,11 +107,10 @@ def absorption(
         * numerical_pre_factor
     )
 
-    # 4. Weighted Sum over states (axis 2)
-    # Resulting shape: (n_photons, n_conditions)
-    total_absorption = np.sum(alpha_states * w, axis=2)
+    # Sum over states axis (axis 0) resulting shape: (n_photon_energies, n_temps)
+    total_absorption = np.sum(alpha_states * weights, axis=0)
 
     return total_absorption
 
 
-# TODO: Implement absorptance a
+# TODO: Implement absorptance
