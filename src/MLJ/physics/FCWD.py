@@ -2,7 +2,9 @@
 #####################################################################################
 # MLJ Package
 #
-# Functions calculating the Franck-Condon Parameters
+# Functions calculating the Franck-Condon Parameters. Model contains two scripts:
+# mathematical implementation that works standalone, and a wrapper for integration
+# classes from the package.
 # Author: Jolanda S Müller, Tim Rein, Imperial College London
 # Copyright (c) 2025, Imperial College London, BSD 3-Clause License
 # Date: November 2025
@@ -16,6 +18,7 @@ import MLJ.physics.constants as const
 from MLJ.physics.basics import boltzmann, laguerre_2d
 
 
+# Convenient wrapper function used by other modules in the package.
 def fcwd(
     photon_energies: Sequence[float],
     transition: Transition,
@@ -23,7 +26,7 @@ def fcwd(
     process: ProcessType,
 ) -> Sequence[float]:
     """
-    Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
+    High-level FCWD (Franck-Condon Weighted Density) interface using Transition objects.
     For reference formula see: https://journals.aps.org/prx/pdf/10.1103/PhysRevX.8.031055 eq. 8
 
     Parameters
@@ -57,7 +60,7 @@ def fcwd(
     gibbs_energy_grid = sign * transition.gibbs_energy_grid
     photon_energies = sign * photon_energies
 
-    return _fcwd(
+    return compute_fcwd(
         photon_energies=photon_energies,
         gibbs_energy_grid=gibbs_energy_grid,
         temperatures=temperatures,
@@ -69,7 +72,8 @@ def fcwd(
     )
 
 
-def _fcwd(
+# Purely mathematical implementation to be used stand-alone.
+def compute_fcwd(
     photon_energies: Sequence[float],
     gibbs_energy_grid: Sequence[float],
     temperatures: np.ndarray,
@@ -80,7 +84,7 @@ def _fcwd(
     n_vib_modes_final: int,
 ) -> Sequence[float]:
     """
-    Compute the FCWD (Franck-Condon Weighted Density) using MLJ theory.
+    Low level implementation of FCWD (Franck-Condon Weighted Density) given numerical parameters.
     For reference formula see: https://journals.aps.org/prx/pdf/10.1103/PhysRevX.8.031055 eq. 8
 
     Parameters
