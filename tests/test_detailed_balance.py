@@ -32,7 +32,7 @@ def test_detailed_balance_preserves_boltzmann():
     )
 
     # 5. Assert: The solver should not shift the populations
-    expected = np.array([p0, p1])
+    expected = np.array([[p0], [p1]])
     np.testing.assert_allclose(
         result,
         expected,

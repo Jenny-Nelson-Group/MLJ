@@ -82,23 +82,28 @@ def test_solver_accuracy_floats():
     """Test a simple 2-state steady-state solution."""
     # State 0: Gen=1, Rec=0.1. State 1: Gen=0, Rec=0.1.
     # Transition 0 -> 1 at rate 0.5
-    rates = [0.1, 0.1]
+    rates = np.array([0.1, 0.1])
     trans = {(0, 1): 0.5}
     tm = TransitionMatrix(rates_to_ground=rates, transitions=trans)
 
+    # inputs are (n_states, n_temps)
     result = states_light_population(
-        dark_population=[0.0, 0.0], generation_rate=[1.0, 0.0], transition_matrix=tm
+        dark_population=np.array([[0.0], [0.0]]),
+        generation_rate=np.array([[1.0], [0.0]]),
+        transition_matrix=tm,
     )
 
     # Hand-calculated steady state:
     # State 0: 1.0 = (0.1 + 0.5) * n0  => n0 = 1.0 / 0.6 = 1.666
     # State 1: 0.5 * n0 = 0.1 * n1     => n1 = 5 * n0 = 8.333
-    expected = np.array([1.0 / 0.6, 5.0 / 0.6])
+    expected = np.array(
+        [[1.0 / 0.6], [5.0 / 0.6]]
+    )  # output should be (n_states, n_temps)
     np.testing.assert_allclose(result, expected)
 
 
 def test_solver_accuracy_arrays():
-    """Test a simple 2-state steady-state solution with multiple conditions."""
+    """Test a simple 2-state steady-state solution with multiple temperatures."""
     rates = [np.array([0.2, 0.1]), np.array([0.2, 0.1])]
     trans = {(0, 1): np.array([0.3, 0.5])}
     tm = TransitionMatrix(rates_to_ground=rates, transitions=trans)
@@ -139,8 +144,8 @@ def test_steady_state_in_dark():
     transitions = {(0, 1): 0, (1, 0): 0}
     tm = TransitionMatrix(rates_to_ground=rates, transitions=transitions)
 
-    # 2. Define an arbitrary dark population sweep (3 conditions)
-    p_dark = [1.0, 0.5]
+    # 2. Define an arbitrary dark populations (2 states, 1 temp)
+    p_dark = [[1.0], [0.5]]
 
     # 3. Solve with generation_rate = 0 (or None)
     # The solver uses: A * n = G + k_rec * n_dark

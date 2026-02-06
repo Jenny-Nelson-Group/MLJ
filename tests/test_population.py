@@ -41,9 +41,10 @@ def test_single_le_state_temperatures():
     pop = states_dark_population([le_state], temperatures=np.array([200.0, 300.0]))
 
     # Assertions
-    assert pop.shape == (1,2), "Should match (n_states, n_temperatures)"
+    assert pop.shape == (1, 2), "Should match (n_states, n_temperatures)"
     assert pop.size > 0, "Population array should not be empty"
     assert np.all(pop >= 0), "Population cannot be negative"
+
 
 def test_le_ct_two_state_weighting():
     """Test Case 2: LE and CT states with."""
@@ -69,13 +70,13 @@ def test_le_ct_two_state_weighting():
 
     # Verify the weight was applied to CT
     # We compare a 'pure' calculation to the weighted one
-    pure_ct_pop = states_dark_population(ct_state)
+    pure_ct_pop = states_dark_population([ct_state])
     assert np.allclose(
         pop_ct, (1.0 / ratio_ct_exciton) * pure_ct_pop
     ), "CT weight 1/rcte not applied correctly"
 
     # Verify the LE weight remained 1.0
-    pure_le_pop = states_dark_population(le_state)
+    pure_le_pop = states_dark_population([le_state])
     assert np.allclose(pop_le, pure_le_pop), "LE weight should be 1.0"
 
 
@@ -84,5 +85,5 @@ def test_default_1_over_n_weighting():
     states = [create_test_state("S1", 1.4), create_test_state("CT", 1.0)]
     results = states_dark_population(states)
     # Each result should be half of the standard dark_population
-    expected_val = 0.5 * states_dark_population(states[0])
+    expected_val = 0.5 * states_dark_population([states[0]])
     assert np.allclose(results[0], expected_val)

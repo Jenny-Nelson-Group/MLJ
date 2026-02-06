@@ -6,18 +6,19 @@ from MLJ.physics.population_dark import states_dark_population
 from MLJ.physics.population_light import states_light_population, TransitionMatrix
 from MLJ.physics.generation import excited_state_generation
 from MLJ.helpers.caching import read_only_cached_property, ReactiveModule
+from typing import Sequence
 import numpy as np
 
 
 class StateSystem(ReactiveModule):
     def __init__(
         self,
-        transition: Transition,
+        transitions: Sequence[Transition] | Transition,
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
         photon_density: float = None,
     ) -> None:
-        self.transition = transition
+        self.transitions = np.atleast_1d(transitions)
         self.photon_energies = (
             config.photon_energies if photon_energies is None else photon_energies
         )
@@ -27,44 +28,55 @@ class StateSystem(ReactiveModule):
         self.photon_density = (
             config.photon_density if photon_density is None else photon_density
         )
+        self.n_transitions = len(self.transitions)
         self.start_caching()
 
     @read_only_cached_property
     def rates(self):
-        return Rates(self.transition, self.photon_energies, self.temperatures)
-
-    @read_only_cached_property
-    def transition_matrix(self):
-        return TransitionMatrix([self.rates.rate_recombination_total])
-
-    @read_only_cached_property
-    def generation(self):
-        return [
-            excited_state_generation(
-                self.rates.rate_absorption_spectral, self.photon_energies
-            )
-        ]
-
-    @read_only_cached_property
-    def populations_dark(self):
-        return states_dark_population(
-            self.transition.state_high_energy, self.temperatures
+        """Returns a NumPy array of Rates objects for each transition."""
+        return np.array(
+            [
+                Rates(trans, self.photon_energies, self.temperatures)
+                for trans in self.transitions
+            ],
+            dtype=object,
         )
 
     @read_only_cached_property
-    def population_light(self):
+    def transition_matrix(self):
+        total_recombination_rates = [r.rate_recombination_total for r in self.rates]
+        return TransitionMatrix(total_recombination_rates)
+
+    @read_only_cached_property
+    def generation(self):
+        # (n_states, n_photon_energies, n_temps)
+        absorption_rates = [r.rate_absorption_spectral for r in self.rates]
+        return excited_state_generation(absorption_rates, self.photon_energies)
+
+    @read_only_cached_property
+    def populations_dark(self):
+        """Returns a NumPy array of Rates objects for each transition."""
+        states = [t.state_high_energy for t in self.transitions]
+        return states_dark_population(states, self.temperatures)
+
+    @read_only_cached_property
+    def populations_light(self):
         return states_light_population(
             self.transition_matrix, self.populations_dark, self.generation
         )
 
     @read_only_cached_property
     def emission_photoluminescence(self):
+        k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
         return emission(
-            populations=[self.population_light],
-            recombination_rates=[self.rates.rate_radiative_spectral],
+            populations=self.populations_light,
+            recombination_rates=k_rad_spectral,
         )
 
     @read_only_cached_property
     def absorption(self):
         # ToDo: placeholder for actual absorption spectrum
-        return self.rates.rate_absorption_spectral
+        k_abs_spectral = np.sum(
+            [r.rate_absorption_spectral for r in self.rates], axis=0
+        )
+        return k_abs_spectral
