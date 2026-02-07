@@ -14,7 +14,6 @@ import numpy as np
 from MLJ.helpers.caching import ReactiveModule
 
 DistributionFunction = Callable[[np.ndarray, float, float], np.ndarray]
-
 class State(ReactiveModule):
     """
     Quantum state with vibronic structure and energetic disorder.
@@ -48,8 +47,8 @@ class State(ReactiveModule):
     """
     def __init__(
             self,
-            index: int = 0,
-            name: str = "Ground State",
+            index: int = None,
+            name: str = None,
             energy: float = 0.0,
             number_of_vibronic_modes: int = 15,
             vib_spacing: float = 0.1500,
@@ -65,7 +64,7 @@ class State(ReactiveModule):
         self.density_of_states: float = 1e5 #Density of states.
         self.number_of_vibronic_modes: int = number_of_vibronic_modes
         self.vib_spacing: float = vib_spacing
-    
+        self.name = name or f"State_{energy}eV"
         self.disorder_integration_cut_off = disorder_integration_cut_off
 
         if (disorder_number_of_states == 1 or disorder_sigma == 0):

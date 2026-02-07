@@ -15,7 +15,7 @@ class TransitionMatrix:
     Attributes:
         rates_to_ground (Sequence[np.ndarray | float]): Recombination rates to ground for each state.
             If arrays are provided, their length defines 'n_temperatures'.
-        transitions (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
+        transfers (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
             (from_state, to_state) indices to transition rates.
         k_recombination (np.ndarray): Standardized recombination rates with
             shape (n_states, n_temperatures).
@@ -29,14 +29,15 @@ class TransitionMatrix:
     """
 
     rates_to_ground: Sequence[np.ndarray | float]
-    transitions: Dict[Tuple[int, int], np.ndarray | float] = field(default_factory=dict)
+    transfers: Dict[Tuple[int, int], np.ndarray | float] | None = None
     k_recombination: np.ndarray = field(init=False)
     full_system_matrix: np.ndarray = field(init=False)
 
     def __post_init__(self):
         # 1. Standardize recombination (k_recombination)
-        # Check that all elements in rates and transitions have the same length
-        all_rates = list(self.rates_to_ground) + list(self.transitions.values())
+        # Check that all elements in rates and transfers have the same length
+        transfers = self.transfers or {}
+        all_rates = list(self.rates_to_ground) + list(transfers.values())
         if len({len(x) if isinstance(x, np.ndarray) else 1 for x in all_rates}) > 1:
             raise ValueError("Provided recombination rates have inconsistent lengths.")
 
@@ -45,9 +46,11 @@ class TransitionMatrix:
 
         # 2. Build transition tensor (n_states, n_states, n_temperatures)
         k_trans = np.zeros((n_states, n_states, n_cond))
-        for (i, j), rate in self.transitions.items():
-            if i != j:
-                k_trans[i, j, :] = rate
+        for (i, j), rate in transfers.items():
+            # Only map transitions between excited states (i > 0 and j > 0)
+            if i > 0 and j > 0:
+                if i != j:
+                    k_trans[i - 1, j - 1, :] = rate
 
         # 3. Assemble system matrix A
         sum_out = k_trans.sum(axis=1)
