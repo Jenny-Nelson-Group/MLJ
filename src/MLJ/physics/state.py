@@ -8,12 +8,14 @@
 # Date: November 2025
 #####################################################################################
 
-from MLJ.physics.basics import dirac_delta, gaussian, gaussian_norm
+from MLJ.physics.basics import gaussian, gaussian_norm
 from typing import Callable
 import numpy as np
 from MLJ.helpers.caching import ReactiveModule
 
 DistributionFunction = Callable[[np.ndarray, float, float], np.ndarray]
+
+
 class State(ReactiveModule):
     """
     Quantum state with vibronic structure and energetic disorder.
@@ -45,38 +47,45 @@ class State(ReactiveModule):
         When disorder is disabled (sigma == 0 or number_of_states == 1),
         this parameter is ignored and a discrete delta single energy is assumed.
     """
-    def __init__(
-            self,
-            index: int = None,
-            name: str = None,
-            energy: float = 0.0,
-            number_of_vibronic_modes: int = 15,
-            vib_spacing: float = 0.1500,
-            disorder_sigma: float = 0.05,
-            disorder_number_of_states: int = 21,
-            disorder_integration_cut_off: float = 2.5,
-            disorder_distribution: 'DistributionFunction | None' = None,
-        ) -> None:
 
+    def __init__(
+        self,
+        index: int = None,
+        name: str = None,
+        energy: float = 0.0,
+        number_of_vibronic_modes: int = 15,
+        vib_spacing: float = 0.1500,
+        disorder_sigma: float = 0.0,
+        disorder_number_of_states: int = 21,
+        disorder_integration_cut_off: float = 2.5,
+        disorder_scaling_cut_off: bool = True,
+        disorder_distribution: "DistributionFunction | None" = None,
+    ) -> None:
         self.index: int = index
-        self.name: str = name
         self.energy: float = energy
-        self.density_of_states: float = 1e5 #Density of states.
+        self.density_of_states: float = 1e5
         self.number_of_vibronic_modes: int = number_of_vibronic_modes
         self.vib_spacing: float = vib_spacing
         self.name = name or f"State_{energy}eV"
-        self.disorder_integration_cut_off = disorder_integration_cut_off
 
-        if (disorder_number_of_states == 1 or disorder_sigma == 0):
-            self.disorder_number_of_states= 1
+        if disorder_number_of_states == 1 or disorder_sigma == 0:
+            self.disorder_number_of_states = 1
             self.disorder_sigma = 0
+            disorder_integration_cut_off = 0
             self.disorder_distribution = single_value
         else:
             self.disorder_sigma = disorder_sigma
             self.disorder_number_of_states = disorder_number_of_states
             self.disorder_distribution = (
-                gaussian_distribution if disorder_distribution is None else disorder_distribution
+                gaussian_distribution
+                if disorder_distribution is None
+                else disorder_distribution
             )
+
+        if disorder_scaling_cut_off:
+            self.cut_off = disorder_integration_cut_off * self.disorder_sigma
+        else:
+            self.cut_off = disorder_integration_cut_off
 
         self.energy_grid: np.ndarray = self.set_disorder_grid()
         self.disorder_weights = self.set_disorder_weights()
@@ -84,9 +93,11 @@ class State(ReactiveModule):
         self.start_caching()
 
     def set_disorder_grid(self) -> np.ndarray:
-        cut_off = self.disorder_integration_cut_off * self.disorder_sigma
-        energy_grid = np.linspace(self.energy - cut_off, self.energy + cut_off, self.disorder_number_of_states)
-        return energy_grid
+        return np.linspace(
+            self.energy - self.cut_off,
+            self.energy + self.cut_off,
+            self.disorder_number_of_states,
+        )
 
     def set_disorder_weights(self) -> np.ndarray:
         energy_grid = self.energy_grid
@@ -96,10 +107,13 @@ class State(ReactiveModule):
     def __repr__(self) -> str:
         return f"State(Name='{self.name}', Energy={self.energy:.4f} eV)"
 
+
 DistributionFunction = Callable[[State, np.ndarray], np.ndarray]
+
 
 def single_value(state: State, x: np.ndarray) -> np.ndarray:
     return np.ones_like(x, dtype=float)
+
 
 def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
     """
@@ -107,6 +121,7 @@ def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
     with width `state.disorder_sigma`.
     """
     return gaussian_norm(x, state.energy, state.disorder_sigma)
+
 
 def gaussian_distribution_nonnorm(state: State, x: np.ndarray) -> np.ndarray:
     """
