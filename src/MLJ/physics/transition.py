@@ -14,26 +14,30 @@ from enum import Enum
 import numpy as np
 from functools import cached_property
 from MLJ.helpers.caching import ReactiveModule
-from MLJ.physics.basics import boltzmann
+
+
 class ProcessType(Enum):
     """Enum class to distinguish the different transition types."""
+
     ABSORPTION = "absorption"
     RECOMBINATION = "recombination"
+
 
 class Transition(ReactiveModule):
     GROUND_STATE = State(energy=0.0, name="Ground State")
 
     """Represents a transition between two quantum states."""
-    def __init__(self,
-                state_high_energy: State = None,
-                state_low_energy: State = None,
-                oscillator_strength: float = 1,
-                static_dipole_moment: float = 3*3.33e-30/1.6e-19,
-                lambda_inner: float = 0.02,
-                lambda_outer: float = 0.02,
-                k_transfer: np.ndarray | None = None,
-                ) -> None:
 
+    def __init__(
+        self,
+        state_high_energy: State = None,
+        state_low_energy: State = None,
+        oscillator_strength: float = 1,
+        static_dipole_moment: float = 3 * 3.33e-30 / 1.6e-19,
+        lambda_inner: float = 0.02,
+        lambda_outer: float = 0.02,
+        k_transfer: np.ndarray | None = None,
+    ) -> None:
         if state_low_energy is None and state_high_energy is None:
             raise ValueError("At least one State must be given.")
 
@@ -101,18 +105,28 @@ class Transition(ReactiveModule):
         if self.state_high_energy.vib_spacing != 0:
             return self.lambda_inner / self.state_high_energy.vib_spacing
         else:
-            raise ValueError("state_high_energy.vib_spacing must not be zero when computing Huang-Rhys.")
+            raise ValueError(
+                "state_high_energy.vib_spacing must not be zero when computing Huang-Rhys."
+            )
 
     def __repr__(self) -> str:
-        return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
-                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+        return (
+            f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
+            f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})"
+        )
+
+    @property
+    def name(self):
+        """Indicates the states involved in the transition."""
+        return f"{self.state_high_energy.name}<->{self.state_low_energy.name}"
+
     @property
     def index(self):
         """Returns the tuple of indices (high, low) for the transition."""
         return (self.state_high_energy.index, self.state_low_energy.index)
 
     @classmethod
-    def assign_indices(cls, transitions: list['Transition']):
+    def assign_indices(cls, transitions: list["Transition"]):
         """
         Gathers all unique states from a list of transitions, sorts them by
         energy, and assigns an .index attribute to each state.
