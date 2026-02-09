@@ -61,3 +61,13 @@ def test_absorption_mismatched_dimensions():
     # This should raise a broadcasting error because 50 != 40
     with pytest.raises(ValueError):
         absorption(photon_energies, rates)
+
+
+def test_absorption_wrong_rates_dimensions():
+    """Test that mismatched energy and rate dimensions raise an error."""
+    photon_energies = np.linspace(1, 10, 50)  # length 50
+    rates = np.ones((2, 5))  # length 40
+
+    # This should raise a broadcasting error because 50 != 40
+    with pytest.raises(ValueError):
+        absorption(photon_energies, rates)

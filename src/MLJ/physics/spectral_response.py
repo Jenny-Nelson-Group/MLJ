@@ -72,12 +72,14 @@ def absorption(
         Shape: (n_photon_energies, n_temps)
         Units: [m^-1] (if input units are SI).
     """
-    spectral_absorption_rate_shape = spectral_absorption_rates.shape
+    # Check that the dimensionality is correct
+    if spectral_absorption_rates.ndim != 3:
+        raise ValueError(
+            f"spectral_absorption_rate must have ndim=3,"
+            f"but it has ndim={spectral_absorption_rates.ndim}"
+        )
 
-    # Check that absorption shape has three dimensions
-    assert len(spectral_absorption_rate_shape) == 3, "Array must have 3 dimensions"
-
-    n_states, n_photon_energies, n_temps = spectral_absorption_rate_shape
+    n_states, _, _ = spectral_absorption_rates.shape
     refractive_index = (
         refractive_index if refractive_index is not None else config.refractive_index
     )
