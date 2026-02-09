@@ -123,8 +123,8 @@ class Transition(ReactiveModule):
 
     @property
     def name(self):
-        """Indicates the states involved in the transition."""
-        return f"{self.state_high_energy.name}<->{self.state_low_energy.name}"
+        """Returns a tuple of state names (high, low)."""
+        return (f"{self.state_high_energy.name}", f"{self.state_low_energy.name}")
 
     @property
     def index(self):
