@@ -1,19 +1,22 @@
 # tests/test_transition.py
-import pytest
 import numpy as np
 from MLJ.physics.transition import Transition
 from MLJ.physics.transition import ProcessType
 from MLJ.physics.state import State
 
+
 def test_import_transition():
     assert hasattr(Transition, "__doc__")
     assert hasattr(ProcessType, "__doc__")
 
+
 def test_transition_energy():
     ground_state = State()
-    excited_state = State("LE",energy=1.5)
+    excited_state = State("LE", energy=1.5)
 
-    transition1 = Transition(state_low_energy=ground_state, state_high_energy=excited_state)
+    transition1 = Transition(
+        state_low_energy=ground_state, state_high_energy=excited_state
+    )
     transition2 = Transition(excited_state, ground_state)
     transition3 = Transition(excited_state)
     transition4 = Transition(ground_state, excited_state)
@@ -24,13 +27,15 @@ def test_transition_energy():
     assert energy_difference == transition3.mean_gibbs_energy
     assert energy_difference == transition4.mean_gibbs_energy
 
+
 def test_huang_rhys():
     ground_state = State()
-    excited_state = State("LE",energy=1.5)
+    excited_state = State("LE", energy=1.5)
 
     transition = Transition(ground_state, excited_state)
     huang_rhys = transition.lambda_inner / excited_state.vib_spacing
     assert huang_rhys == transition.huang_rhys
+
 
 def test_huang_rhys_cache_invalidation():
     ground_state = State()
@@ -42,12 +47,13 @@ def test_huang_rhys_cache_invalidation():
     huang_rhys_2 = transition.huang_rhys
     assert huang_rhys_1 != huang_rhys_2
 
+
 def test_repr():
     from MLJ.physics.state import State
     from MLJ.physics.transition import Transition
 
     ground_state = State()
-    excited_state = State("LE",energy=1.5)
+    excited_state = State("LE", energy=1.5)
 
     transition = Transition(ground_state, excited_state)
     assert isinstance(repr(transition), str)
@@ -59,12 +65,13 @@ def test_edge_case_no_disorder():
     from MLJ.physics.transition import Transition
 
     ground_state = State()
-    excited_state = State("LE",energy=1.5,disorder_sigma=0)
+    excited_state = State("LE", energy=1.5, disorder_sigma=0)
     transition = Transition(ground_state, excited_state)
 
     assert len(transition.gibbs_energy_grid) == 1
     assert transition.gibbs_energy_grid[0] == transition.mean_gibbs_energy
     assert transition.disorder_weights == np.array([1])
+
 
 def test_assign_indices_automatic_sorting():
     """
@@ -91,13 +98,14 @@ def test_assign_indices_automatic_sorting():
     assert s_le.index == 2
 
     # Check the return list order
-    assert sorted_states[0].name == "Ground State"
-    assert sorted_states[2].name == "LE"
+    assert sorted_states[0].energy == 0
+    assert sorted_states[2].energy == 2.1
 
     # Check that the transition index property works correctly
     assert t_le_ct.index == (2, 1)
     assert t_ct_0.index == (1, 0)
     assert t_le_0.index == (2, 0)
+
 
 def test_assign_indices_unique_states():
     """

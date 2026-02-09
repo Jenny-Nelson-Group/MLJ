@@ -46,6 +46,12 @@ class Transition(ReactiveModule):
 
         self.determine_high_low_energy_state(state_low_energy, state_high_energy)
 
+        if (
+            self.state_low_energy.energy == 0
+            and self.state_low_energy != Transition.GROUND_STATE
+        ):
+            Transition.GROUND_STATE = self.state_low_energy
+
         self.oscillator_strength: float = oscillator_strength
         self.static_dipole_moment: float = static_dipole_moment
 
