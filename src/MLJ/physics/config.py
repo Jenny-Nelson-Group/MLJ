@@ -28,6 +28,7 @@ class _Config:
     photon_density: float = 1
     laser_mean_energy: float = 1.7  # [Watts]
     laser_broadening: float = 0.1  # [dimensionless]
+    refractive_index: float = 1  # vacuum for now
 
 
 config = _Config()  # public singleton (making sure that only one instance of the config is used across the package)
