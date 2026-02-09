@@ -15,7 +15,7 @@ class TransitionMatrix:
     Attributes:
         rates_to_ground (Sequence[np.ndarray | float]): Recombination rates to ground for each state.
             If arrays are provided, their length defines 'n_temperatures'.
-        transitions (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
+        transfers (Dict[Tuple[int, int], np.ndarray | float]): Mapping of
             (from_state, to_state) indices to transition rates.
         k_recombination (np.ndarray): Standardized recombination rates with
             shape (n_states, n_temperatures).
@@ -29,14 +29,15 @@ class TransitionMatrix:
     """
 
     rates_to_ground: Sequence[np.ndarray | float]
-    transitions: Dict[Tuple[int, int], np.ndarray | float] = field(default_factory=dict)
+    transfers: Dict[Tuple[int, int], np.ndarray | float] | None = None
     k_recombination: np.ndarray = field(init=False)
     full_system_matrix: np.ndarray = field(init=False)
 
     def __post_init__(self):
         # 1. Standardize recombination (k_recombination)
-        # Check that all elements in rates and transitions have the same length
-        all_rates = list(self.rates_to_ground) + list(self.transitions.values())
+        # Check that all elements in rates and transfers have the same length
+        transfers = self.transfers or {}
+        all_rates = list(self.rates_to_ground) + list(transfers.values())
         if len({len(x) if isinstance(x, np.ndarray) else 1 for x in all_rates}) > 1:
             raise ValueError("Provided recombination rates have inconsistent lengths.")
 
@@ -45,9 +46,11 @@ class TransitionMatrix:
 
         # 2. Build transition tensor (n_states, n_states, n_temperatures)
         k_trans = np.zeros((n_states, n_states, n_cond))
-        for (i, j), rate in self.transitions.items():
-            if i != j:
-                k_trans[i, j, :] = rate
+        for (i, j), rate in transfers.items():
+            # Only map transitions between excited states (i > 0 and j > 0)
+            if i > 0 and j > 0:
+                if i != j:
+                    k_trans[i - 1, j - 1, :] = rate
 
         # 3. Assemble system matrix A
         sum_out = k_trans.sum(axis=1)
@@ -75,8 +78,8 @@ class TransitionMatrix:
 
 def states_light_population(
     transition_matrix: TransitionMatrix,
-    dark_population: Sequence[np.ndarray | float],
-    generation_rate: Sequence[np.ndarray | float] | None = None,
+    dark_population: Sequence[np.ndarray],
+    generation_rate: Sequence[np.ndarray] | None = None,
 ) -> np.ndarray:
     """
     Solve steady-state rate equations for a multi-state system across all conditions.
@@ -85,10 +88,12 @@ def states_light_population(
     ----------
     transition_matrix : TransitionMatrix
         Assembled system matrix of shape (n_temperatures, n_states, n_states).
-    dark_population : Sequence[np.ndarray | float]
-        Thermal equilibrium populations for each state. Length must be n_states.
-    generation_rate : Sequence[np.ndarray | float], optional
+    dark_population : Sequence[np.ndarray]
+        Thermal equilibrium populations for each state.
+        Shape = (n_states, n_temperatures)
+    generation_rate : Sequence[np.ndarray], optional
         External generation rates for each state. If None, defaults to zero.
+        Shape = (n_states, n_temperatures)
 
     Returns
     -------
@@ -100,25 +105,36 @@ def states_light_population(
     ValueError
         If input lengths or condition counts do not match the transition matrix.
     """
-    # --- 1. Determine input shape consistency
-    pop_dark = np.array([np.atleast_1d(p) for p in dark_population])
-
+    # ensure inputs are arrays
+    dark_population = np.asarray(dark_population)
     if generation_rate is None:
-        gen_rate = np.zeros_like(pop_dark)
+        generation_rate = np.zeros_like(dark_population)
     else:
-        gen_rate = np.array([np.atleast_1d(g) for g in generation_rate])
+        generation_rate = np.asarray(generation_rate)
 
-    if pop_dark.shape != gen_rate.shape:
-        raise ValueError("Shape of dark population and generation rates don't match.")
+    # --- 1. Determine input shape consistency
+    if dark_population.ndim != 2:  # (n_states, n_temps)
+        raise ValueError(
+            f"dark_population must be 2D (n_states, n_temps). "
+            f"Got {dark_population.ndim}D with shape {dark_population.shape}."
+        )
 
-    if transition_matrix.shape != pop_dark.shape:
-        raise ValueError("Transition Matrix dimensions and population don't match.")
+    if len({dark_population.shape, generation_rate.shape, transition_matrix.shape}) > 1:
+        raise ValueError(
+            f"Input dimensions must match (n_states, n_temps)."
+            f"Got {dark_population.shape}, {generation_rate.shape}, and {transition_matrix.shape}."
+        )
 
-    # --- 2. Create parameter arrays from input bundles
-    recombination_rate = transition_matrix.k_recombination
+    # --- 2. Prepare terms:
+    recombination_rate = transition_matrix.k_recombination  # (n_states, n_temps)
+    source_terms = (generation_rate + recombination_rate * dark_population).T[
+        ..., np.newaxis
+    ]  # (n_temps, n_states)
+    system_matrix = transition_matrix.full_system_matrix  # (n_temps, n_states)
 
-    # --- 3. Build Source Vsector b (n_temperatures, n_states) and get system matrix
-    source_terms = (gen_rate + recombination_rate * pop_dark).T[..., np.newaxis]
-    system_matrix = transition_matrix.full_system_matrix
-    result = np.linalg.solve(system_matrix, source_terms)
-    return result.T.squeeze()
+    # --- 3. Solve Ax = b,  x = result (populations)
+    # system_matrix A: (n_temps, n_states, n_states)
+    # source_terms b:  (n_temps, n_states, 1)
+    # solution x:      (n_temps, n_states, 1)
+    solution = np.linalg.solve(system_matrix, source_terms)  # (n_temps, n_states, 1)
+    return solution[..., 0].T  # (n_states, n_temps)

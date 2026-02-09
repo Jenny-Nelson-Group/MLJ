@@ -6,31 +6,40 @@ from MLJ.physics.constants import REDUCED_PLANCK_CONSTANT_JS, SPEED_OF_LIGHT
 
 
 def emission(
-    populations: Sequence[np.ndarray | float],
-    recombination_rates: Sequence[np.ndarray | float],
+    populations: Sequence[np.ndarray],
+    recombination_rates: Sequence[np.ndarray],
 ) -> np.ndarray:
     """
     Calculate total emission flux from state populations and recombination rates.
 
     Parameters
     ----------
-    populations : Sequence[np.ndarray | float]
+    populations : Sequence[np.ndarray]
         population for each state. Can be a sequence of floats or 1D arrays.
-    recombination_rates : Sequence[np.ndarray | float]
+        shape = (n_states, n_temperatures)
+    recombination_rates : Sequence[np.ndarray]
         Recombination rates for each state. Must match population shapes.
+        shape = (n_states, n_photon_energies, n_temperatures)
 
     Returns
     -------
     np.ndarray
-        Total emission flux summed over all states. Shape: (n_conditions,).
+        Total emission flux summed over all states. Shape: (n_photon_energies, n_temps,).
     """
-    # 1. Standardize both to (n_states, n_conditions)
-    populations = np.array([np.atleast_1d(p) for p in populations])
-    recombination_rates = np.array([np.atleast_1d(r) for r in recombination_rates])
+    # 1. Check input shapes (n_states, n_conditions)
+    populations = np.asarray(populations)
+    recombination_rates = np.asarray(recombination_rates)
 
-    if populations.shape != recombination_rates.shape[::2]:
+    # Check 1: Dimensions (2D and 3D)
+    # Check 2: Match (M, N) with (M, _, N) using [::2]
+    if (
+        populations.ndim != 2
+        or recombination_rates.ndim != 3
+        or populations.shape != recombination_rates.shape[::2]
+    ):
         raise ValueError(
-            f"Shape mismatch: populations {populations.shape} vs rates {recombination_rates.shape}"
+            f"Input mismatch. Populations {populations.shape} must match "
+            f"outer dimensions of Rates {recombination_rates.shape}."
         )
 
     # 2. Flux calculation: sum over states (axis 0)

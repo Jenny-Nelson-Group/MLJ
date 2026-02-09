@@ -22,6 +22,9 @@ class _Config:
     """
 
     temperatures_K: np.ndarray = field(default_factory=lambda: np.array([300.0]))
+    photon_energies: np.ndarray = field(
+        default_factory=lambda: np.linspace(0.8, 2.0, 200)
+    )
     photon_density: float = 1
     laser_mean_energy: float = 1.7  # [Watts]
     laser_broadening: float = 0.1  # [dimensionless]

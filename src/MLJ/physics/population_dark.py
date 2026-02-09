@@ -17,9 +17,9 @@ def states_dark_population(
     Parameters
     ----------
     states : Sequence[State]
-        Sequence of State objects.
+        Sequence of State objects. Shape = (n_states,)
     temperatures : np.ndarray, optional
-        Array of temperatures in Kelvin.
+        Array of temperatures in Kelvin. Shape = (n_temperatures,)
         If None, defaults to config.temperatures_K.
     weights : Sequence[float], optional
         Scalar weights per state. Defaults to 1/N.
@@ -29,20 +29,24 @@ def states_dark_population(
     Returns
     -------
     np.ndarray
-        Array of shape (states.length, temperatures.length).
+        Array of shape (n_states, n_temperatures).
         Each row contains the state's population [dimensionless] across all temperatures.
     """
     # 1. Handle input values
-    states = np.atleast_1d(states)
+    states = np.asarray(states)
     n_states = len(states)
 
     temperatures = config.temperatures_K if temperatures is None else temperatures
-    energies, dos = np.array([(s.energy, s.density_of_states) for s in states]).T
+    energies, dos = np.array(
+        [(s.energy, s.density_of_states) for s in states]
+    ).T  # (n_states)
     weights = np.asarray(weights if weights is not None else [1 / n_states] * n_states)
 
     if len(weights) != n_states:
         raise ValueError(f"Mismatch: {n_states} states but {len(weights)} weights.")
 
     # calculate and return weighted dark populations
-    populations = dos * boltzmann(energies - voltage, temperatures) #(n_states,n_temps)
-    return (populations * weights[:, None])
+    populations = dos[:, None] * boltzmann(
+        energies - voltage, temperatures
+    )  # (n_states,n_temps)
+    return populations * weights[:, None]

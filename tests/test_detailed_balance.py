@@ -17,8 +17,8 @@ def test_detailed_balance_preserves_boltzmann():
     k_CTLE = k_LECT / boltzmann(energy_LE - energy_CT, temperature)
 
     rates = [0.1, 0.1]  # Recombination to ground
-    transitions = {(0, 1): k_LECT, (1, 0): k_CTLE}
-    tm = TransitionMatrix(rates_to_ground=rates, transitions=transitions)
+    transfers = {(0, 1): k_LECT, (1, 0): k_CTLE}
+    tm = TransitionMatrix(rates_to_ground=rates, transfers=transfers)
 
     # 3. Define P_dark following Boltzmann distribution
     # P = DoS * exp(-E/kbT) -- assuming equal DoS and weight 1 here
@@ -32,7 +32,7 @@ def test_detailed_balance_preserves_boltzmann():
     )
 
     # 5. Assert: The solver should not shift the populations
-    expected = np.array([p0, p1])
+    expected = np.array([[p0], [p1]])
     np.testing.assert_allclose(
         result,
         expected,

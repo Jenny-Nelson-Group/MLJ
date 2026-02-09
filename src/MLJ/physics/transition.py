@@ -15,25 +15,42 @@ import numpy as np
 from functools import cached_property
 from MLJ.helpers.caching import ReactiveModule
 
+
 class ProcessType(Enum):
     """Enum class to distinguish the different transition types."""
+
     ABSORPTION = "absorption"
     RECOMBINATION = "recombination"
 
-class Transition(ReactiveModule):
-    """Represents a transition between two quantum states."""
-    def __init__(self,
-                state_high_energy: State,  # typically the excited or CT state
-                state_low_energy: State = State(),   # default to Ground State with Energy 0
-                oscillator_strength: float = 1,
-                static_dipole_moment: float = 3*3.33e-30/1.6e-19,
-                lambda_inner: float = 0.02,
-                lambda_outer: float = 0.02) -> None:
 
-        if state_low_energy is None or state_high_energy is None:
-            raise ValueError("Two valid states must be given.")
+class Transition(ReactiveModule):
+    GROUND_STATE = State(energy=0.0, name="Ground State")
+
+    """Represents a transition between two quantum states."""
+
+    def __init__(
+        self,
+        state_high_energy: State = None,
+        state_low_energy: State = None,
+        oscillator_strength: float = 1,
+        static_dipole_moment: float = 3 * 3.33e-30 / 1.6e-19,
+        lambda_inner: float = 0.02,
+        lambda_outer: float = 0.02,
+        k_transfer: np.ndarray | None = None,
+    ) -> None:
+        if state_low_energy is None and state_high_energy is None:
+            raise ValueError("At least one State must be given.")
+
+        state_low_energy = state_low_energy or Transition.GROUND_STATE
+        state_high_energy = state_high_energy or Transition.GROUND_STATE
 
         self.determine_high_low_energy_state(state_low_energy, state_high_energy)
+
+        if (
+            self.state_low_energy.energy == 0
+            and self.state_low_energy != Transition.GROUND_STATE
+        ):
+            Transition.GROUND_STATE = self.state_low_energy
 
         self.oscillator_strength: float = oscillator_strength
         self.static_dipole_moment: float = static_dipole_moment
@@ -43,6 +60,8 @@ class Transition(ReactiveModule):
 
         self.electronic_coupling_rad_func = cpl.transition_dipole_moment
         self.electronic_coupling_nrad_func = cpl.mulliken_hush_coupling
+
+        self.k_transfer = np.atleast_1d(k_transfer) if k_transfer is not None else None
 
         self.start_caching()
 
@@ -92,8 +111,49 @@ class Transition(ReactiveModule):
         if self.state_high_energy.vib_spacing != 0:
             return self.lambda_inner / self.state_high_energy.vib_spacing
         else:
-            raise ValueError("state_high_energy.vib_spacing must not be zero when computing Huang-Rhys.")
+            raise ValueError(
+                "state_high_energy.vib_spacing must not be zero when computing Huang-Rhys."
+            )
 
     def __repr__(self) -> str:
-        return (f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
-                f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})")
+        return (
+            f"Transition(Low-energy state ='{self.state_low_energy.name}', High-energy state='{self.state_high_energy.name}', "
+            f"Energy Difference={self.mean_gibbs_energy:.4f} eV, Huang Rhys Factor={self.huang_rhys:.4f})"
+        )
+
+    @property
+    def name(self):
+        """Returns a tuple of state names (high, low)."""
+        return (f"{self.state_high_energy.name}", f"{self.state_low_energy.name}")
+
+    @property
+    def index(self):
+        """Returns the tuple of indices (high, low) for the transition."""
+        return (self.state_high_energy.index, self.state_low_energy.index)
+
+    @classmethod
+    def assign_indices(cls, transitions: list["Transition"]):
+        """
+        Gathers all unique states from a list of transitions, sorts them by
+        energy, and assigns an .index attribute to each state.
+        Ground state (lowest energy) is always 0.
+        """
+        # 1. Collect all unique state objects
+        unique_states = set()
+        for t in transitions:
+            unique_states.add(t.state_high_energy)
+            unique_states.add(t.state_low_energy)
+
+        # Add the default GROUND_STATE if no 0-energy state exists
+        if not any(s.energy == 0 for s in unique_states):
+            unique_states.add(cls.GROUND_STATE)
+
+        # 2. Sort states by their energy attribute
+        # Lower energy gets lower index
+        sorted_states = sorted(list(unique_states), key=lambda s: s.energy)
+
+        # 3. Assign the index to the state objects
+        for idx, state in enumerate(sorted_states):
+            state.index = idx
+
+        return sorted_states

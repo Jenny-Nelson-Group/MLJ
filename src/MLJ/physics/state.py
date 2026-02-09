@@ -50,23 +50,23 @@ class State(ReactiveModule):
 
     def __init__(
         self,
-        index: int = 0,
-        name: str = "Ground State",
+        index: int = None,
+        name: str = None,
         energy: float = 0.0,
         number_of_vibronic_modes: int = 15,
         vib_spacing: float = 0.1500,
-        disorder_sigma: float = 0.05,
+        disorder_sigma: float = 0.0,
         disorder_number_of_states: int = 21,
         disorder_integration_cut_off: float = 2.5,
         disorder_scaling_cut_off: bool = True,
         disorder_distribution: "DistributionFunction | None" = None,
     ) -> None:
         self.index: int = index
-        self.name: str = name
         self.energy: float = energy
         self.density_of_states: float = 1e5
         self.number_of_vibronic_modes: int = number_of_vibronic_modes
         self.vib_spacing: float = vib_spacing
+        self.name = name or f"State_{energy}eV"
 
         if disorder_number_of_states == 1 or disorder_sigma == 0:
             self.disorder_number_of_states = 1
