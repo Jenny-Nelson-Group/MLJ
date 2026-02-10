@@ -1,10 +1,10 @@
 from MLJ.physics.transition import Transition
-from MLJ.physics.spectral_response import emission
+from MLJ.physics.spectral_response import emission, absorption
 from MLJ.physics.rates import Rates
 from MLJ.physics.basics import boltzmann
 from MLJ.physics.config import config
 from MLJ.physics.population_dark import states_dark_population
-from MLJ.physics.population_light import states_light_population, TransitionMatrix
+from MLJ.physics.population_light import solve_population, TransitionMatrix
 from MLJ.physics.generation import excited_state_generation
 from MLJ.helpers.caching import read_only_cached_property, ReactiveModule
 from typing import Sequence, Tuple, Dict
@@ -18,15 +18,15 @@ class StateSystem(ReactiveModule):
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
         photon_density: float = None,
+        voltage: float = 0.0,
     ) -> None:
         self.transitions = np.atleast_1d(transitions)
         self.photon_energies = (
             photon_energies if photon_energies is not None else config.photon_energies
         )
-        self.temperatures = (
-            temperatures if temperatures is not None else config.temperatures_K
-        )
+        self.temperatures = temperatures if temperatures is not None else config.temperatures_K
         self.photon_density = photon_density or config.photon_density
+        self.voltage = voltage
         self.n_transitions = len(self.transitions)
         self._system_data
         self.start_caching()
@@ -60,8 +60,8 @@ class StateSystem(ReactiveModule):
                         f", but temperatures have shape {self.temperatures.shape}."
                     )
                 k_up = k_down * boltzmann(trans.mean_gibbs_energy, self.temperatures)
-                transfer_dict[(low_idx, high_idx)] = k_down # downhill: high -> low
-                transfer_dict[(high_idx, low_idx)] = k_up   # uphill: low -> high
+                transfer_dict[(high_idx, low_idx)] = k_down  # downhill: high -> low
+                transfer_dict[(low_idx, high_idx)] = k_up  # uphill: low -> high
 
         return rates, transfer_dict
 
@@ -89,16 +89,30 @@ class StateSystem(ReactiveModule):
     @read_only_cached_property
     def populations_dark(self):
         """Returns a NumPy array of Rates objects for each transition."""
-        return states_dark_population(self.sorted_states, self.temperatures)
+        pop_dark = states_dark_population(self.sorted_states, self.temperatures)
+        return pop_dark
 
     @read_only_cached_property
     def populations_light(self):
-        return states_light_population(
-            self.transition_matrix, self.populations_dark, self.generation
+        return solve_population(self.transition_matrix, self.populations_dark, self.generation)
+
+    @read_only_cached_property
+    def populations_bias_inital(self):
+        population_bias_initial = self.populations_dark
+        population_bias_initial[0] = states_dark_population(
+            [self.sorted_states[0]], self.temperatures, voltage=self.voltage
+        )
+        return population_bias_initial
+
+    @read_only_cached_property
+    def populations_bias_thermalised(self):
+        return solve_population(
+            self.transition_matrix, self.populations_bias_inital, generation_rate=None
         )
 
     @read_only_cached_property
     def emission_photoluminescence(self):
+        """Returns the photoluminescence of the system."""
         k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
         return emission(
             populations=self.populations_light,
@@ -106,9 +120,21 @@ class StateSystem(ReactiveModule):
         )
 
     @read_only_cached_property
-    def absorption(self):
-        # ToDo: placeholder for actual absorption spectrum
-        k_abs_spectral = np.sum(
-            [r.rate_absorption_spectral for r in self.rates], axis=0
+    def emission_electroluminescence(self):
+        """Returns the electroluminescence of the system."""
+        # take dark population
+        # inject additional states into the lowest energy state proportional to the voltaege
+        k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
+        return emission(
+            populations=self.populations_bias_thermalised,
+            recombination_rates=k_rad_spectral,
         )
-        return k_abs_spectral
+
+    @read_only_cached_property
+    def absorbance(self):
+        """Returns the absorption spectrum of the system."""
+        k_rad_spectral = [r.rate_absorption_spectral for r in self.rates]
+        return absorption(
+            photon_energies=self.photon_energies,
+            spectral_absorption_rates=k_rad_spectral,
+        )

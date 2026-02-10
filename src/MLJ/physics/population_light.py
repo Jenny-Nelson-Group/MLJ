@@ -76,7 +76,7 @@ class TransitionMatrix:
         return (n_states, n_cond)
 
 
-def states_light_population(
+def solve_population(
     transition_matrix: TransitionMatrix,
     dark_population: Sequence[np.ndarray],
     generation_rate: Sequence[np.ndarray] | None = None,
