@@ -18,8 +18,12 @@ from MLJ.helpers.caching import read_only_cached_property, ReactiveModule
 
 import numpy as np
 
-_prefactor_rad = 1/(3*np.pi*const.VACUUM_PERMITTIVITY_EV*const.REDUCED_PLANCK_CONSTANT_EVS**4)
-_prefactor_nrad = 2*np.pi/const.REDUCED_PLANCK_CONSTANT_EVS
+_prefactor_rad = 1 / (
+    3 * np.pi * const.VACUUM_PERMITTIVITY_EV * const.REDUCED_PLANCK_CONSTANT_EVS**4
+)
+_prefactor_nrad = 2 * np.pi / const.REDUCED_PLANCK_CONSTANT_EVS
+
+
 class Rates(ReactiveModule):
     """
     Manager for calculating radiative and non-radiative transition rates.
@@ -37,30 +41,34 @@ class Rates(ReactiveModule):
         The incident photon flux or density. Used to scale absorption rates.
         Defaults to `config.photon_density`.
     """
-    def __init__(self,
-            transition: Transition,
-            photon_energies: np.ndarray,
-            temperatures: np.ndarray = None,
-            photon_density: float = None,
-            ) -> None:
 
-            self.transition = transition
-            self.photon_energies = photon_energies
-            self.temperatures = config.temperatures_K if temperatures is None else temperatures
-            self.photon_density = config.photon_density if photon_density is None else photon_density
+    def __init__(
+        self,
+        transition: Transition,
+        photon_energies: np.ndarray = None,
+        temperatures: np.ndarray = None,
+        photon_density: float = None,
+    ) -> None:
+        self.transition = transition
+        self.photon_energies = photon_energies
+        self.temperatures = config.temperatures_K if temperatures is None else temperatures
+        self.photon_energies = (
+            config.photon_energies if photon_energies is None else photon_energies
+        )
+        self.photon_density = config.photon_density if photon_density is None else photon_density
 
-            self.start_caching()
+        self.start_caching()
 
-# ----------------------------------------- Property Caching --------------------------------------------#
+    # ----------------------------------------- Property Caching --------------------------------------------#
     @read_only_cached_property
     def rate_absorption_spectral(self):
         """Spectral radiative absorption rate."""
-        return self.rate_calculation(process = ProcessType.ABSORPTION, is_non_radiative=False)
+        return self.rate_calculation(process=ProcessType.ABSORPTION, is_non_radiative=False)
 
     @read_only_cached_property
     def rate_radiative_spectral(self):
         """Spectral radiative recombination rate."""
-        return self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=False)
+        return self.rate_calculation(process=ProcessType.RECOMBINATION, is_non_radiative=False)
 
     @read_only_cached_property
     def rate_radiative_total(self):
@@ -70,7 +78,7 @@ class Rates(ReactiveModule):
     @read_only_cached_property
     def rate_non_radiative_total(self):
         """Total non-radiative rate"""
-        knrad = self.rate_calculation(process = ProcessType.RECOMBINATION, is_non_radiative=True)
+        knrad = self.rate_calculation(process=ProcessType.RECOMBINATION, is_non_radiative=True)
         return knrad.squeeze(axis=0)
 
     @read_only_cached_property
@@ -80,7 +88,7 @@ class Rates(ReactiveModule):
 
     @read_only_cached_property
     def boltzmann_electronic_states(self):
-        """ Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
+        """Broadcasting the grid and temperatures into a 3D tensor (shape: (1, N_disorder_energies, N_temperatures))"""
         grid = self.transition.gibbs_energy_grid
         return boltzmann(grid[None, :, None], self.temperatures[None, None, :])
 
@@ -97,8 +105,7 @@ class Rates(ReactiveModule):
     @read_only_cached_property
     def photon_phase_space(self):
         """Energy prefactor for radiative transitions with (shape(photon_energies))"""
-        return (self.photon_energies/const.SPEED_OF_LIGHT)**3
-
+        return (self.photon_energies / const.SPEED_OF_LIGHT) ** 3
 
     def rate_calculation(self, process, is_non_radiative):
         """
@@ -136,8 +143,12 @@ class Rates(ReactiveModule):
             coupling = transition.electronic_coupling_radiative
 
         # 2. Get FCWD
-        fcwd_ = fcwd.fcwd(photon_energies=calculation_energies, transition=transition,
-                          temperatures=self.temperatures, process=process)
+        fcwd_ = fcwd.fcwd(
+            photon_energies=calculation_energies,
+            transition=transition,
+            temperatures=self.temperatures,
+            process=process,
+        )
 
         # 3. Determine the integrand
         integrand = fcwd_ * transition.disorder_weights[None, :, None]
@@ -153,15 +164,17 @@ class Rates(ReactiveModule):
                 raise ValueError(f"Process {process} not recognized by Rate Engine.")
 
         # 4. Integrate
-        disorder_integral = integral(y = integrand, x = transition.gibbs_energy_grid, axis=1)
+        disorder_integral = integral(y=integrand, x=transition.gibbs_energy_grid, axis=1)
 
         # Get Rate
-        rate = (prefactor # shape(1)
-                * coupling**2 # shape(1)
-                * energy_term[:,None] # shape(photon_energies,1)
-                * disorder_integral # shape(photon_energies,temperatures)
-                / norm[None,:]) # shape(1,temperatures)
-        if process==ProcessType.ABSORPTION:
+        rate = (
+            prefactor  # shape(1)
+            * coupling**2  # shape(1)
+            * energy_term[:, None]  # shape(photon_energies,1)
+            * disorder_integral  # shape(photon_energies,temperatures)
+            / norm[None, :]
+        )  # shape(1,temperatures)
+        if process == ProcessType.ABSORPTION:
             rate *= self.photon_density
 
         return rate

@@ -16,8 +16,10 @@ from MLJ.physics.state import State
 from MLJ.physics.transition import Transition
 from MLJ.physics.rates import Rates
 from MLJ.physics.simulate_system import StateSystem
+from MLJ.helpers.plotting import plot_PL
+from MLJ.physics.config import config
 
-__all__ = ["State", "Transition", "Rates", "StateSystem"]
+__all__ = ["State", "Transition", "Rates", "StateSystem", "plot_PL", "config"]
 
 
 def run(*, example=False, **kwargs):
