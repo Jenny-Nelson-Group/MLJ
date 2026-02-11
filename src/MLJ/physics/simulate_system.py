@@ -1,7 +1,7 @@
 from MLJ.physics.transition import Transition
 from MLJ.physics.spectral_response import emission, absorption
 from MLJ.physics.rates import Rates
-from MLJ.physics.basics import boltzmann
+from MLJ.physics.basics import boltzmann, current_to_electrons
 from MLJ.physics.config import config
 from MLJ.physics.population_dark import states_dark_population
 from MLJ.physics.population_light import solve_population, TransitionMatrix
@@ -18,7 +18,7 @@ class StateSystem(ReactiveModule):
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
         photon_density: float = None,
-        voltage: float = 0.0,
+        injection_current: float = 0.0,
     ) -> None:
         self.transitions = np.atleast_1d(transitions)
         self.photon_energies = (
@@ -26,7 +26,7 @@ class StateSystem(ReactiveModule):
         )
         self.temperatures = temperatures if temperatures is not None else config.temperatures_K
         self.photon_density = photon_density or config.photon_density
-        self.voltage = voltage
+        self.injection_current = injection_current
         self.n_transitions = len(self.transitions)
         self._system_data
         self.start_caching()
@@ -81,10 +81,20 @@ class StateSystem(ReactiveModule):
         return TransitionMatrix(k_ground_total, self.transfers)
 
     @read_only_cached_property
-    def generation(self):
+    def generation_light(self):
         # (n_states, n_photon_energies, n_temps)
         absorption_rates = [r.rate_absorption_spectral for r in self.rates]
         return excited_state_generation(absorption_rates, self.photon_energies)
+
+    @read_only_cached_property
+    def generation_injection(self):
+        """
+        Return the generation rate (n_states, n_temperatures) from injection current.
+        All the states are injected into the lowest energy states.
+        """
+        generation_injection = np.zeros_like(self.populations_dark)
+        generation_injection[0, :] = current_to_electrons(self.injection_current)
+        return generation_injection
 
     @read_only_cached_property
     def populations_dark(self):
@@ -94,20 +104,16 @@ class StateSystem(ReactiveModule):
 
     @read_only_cached_property
     def populations_light(self):
-        return solve_population(self.transition_matrix, self.populations_dark, self.generation)
-
-    @read_only_cached_property
-    def populations_bias_inital(self):
-        population_bias_initial = self.populations_dark
-        population_bias_initial[0] = states_dark_population(
-            [self.sorted_states[0]], self.temperatures, voltage=self.voltage
-        )
-        return population_bias_initial
-
-    @read_only_cached_property
-    def populations_bias_thermalised(self):
+        """Returns the steady state population under light bias."""
         return solve_population(
-            self.transition_matrix, self.populations_bias_inital, generation_rate=None
+            self.transition_matrix, self.populations_dark, self.generation_light
+        )
+
+    @read_only_cached_property
+    def populations_injection(self):
+        """Returns the steady states population under injection current."""
+        return solve_population(
+            self.transition_matrix, self.populations_dark, self.generation_injection
         )
 
     @read_only_cached_property
@@ -122,11 +128,10 @@ class StateSystem(ReactiveModule):
     @read_only_cached_property
     def emission_electroluminescence(self):
         """Returns the electroluminescence of the system."""
-        # take dark population
-        # inject additional states into the lowest energy state proportional to the voltaege
+        # emission is calculated from the steady state population after injecting current
         k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
         return emission(
-            populations=self.populations_bias_thermalised,
+            populations=self.populations_injection,
             recombination_rates=k_rad_spectral,
         )
 

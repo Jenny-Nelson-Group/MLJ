@@ -184,7 +184,7 @@ def test_system_property_shapes(n_temps, n_energies):
     assert system.transition_matrix.shape == (n_states, n_temps)
 
     # Generation: n_states x n_energies x n_temps
-    assert system.generation.shape == (n_states, n_temps)
+    assert system.generation_light.shape == (n_states, n_temps)
 
     # Populations: n_states x n_temps
     assert system.populations_light.shape == (n_states, n_temps)

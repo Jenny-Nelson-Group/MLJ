@@ -43,6 +43,23 @@ def dirac_delta(num: int, pos=0):
     return weights
 
 
+def current_to_electrons(current):
+    """
+    Returns number of electrons flowing in a given current.
+
+    Parameters
+    ----------
+    current : float
+        Current [A]
+
+    Returns
+    -------
+    float
+        Number of electrons per second [1/s]
+    """
+    return current / const.UNIT_CHARGE
+
+
 def boltzmann(energy, temperature):
     """
     Calculate the Boltzmann factor with automatic 1D-to-2D grid broadcasting.

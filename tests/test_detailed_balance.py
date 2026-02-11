@@ -59,7 +59,7 @@ def test_detailed_balance_dark():
     trans_CT = mlj.Transition(ct, gs, oscillator_strength=3)
     trans_LECT = mlj.Transition(le, ct, k_transfer=np.ones(n_temps))
 
-    two_state_system = mlj.StateSystem([trans_LE, trans_CT, trans_LECT], voltage=0)
+    two_state_system = mlj.StateSystem([trans_LE, trans_CT, trans_LECT], injection_current=0)
 
     inital_dark = two_state_system.populations_dark
     solved_dark = solve_population(
