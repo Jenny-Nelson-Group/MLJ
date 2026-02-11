@@ -8,9 +8,14 @@ def _base_plotter(energies, values, temperatures, ylabel, ax=None, normalise=Fal
     ax = ax or plt.gca()
 
     # Normalization Logic
-    if normalise:
+    if normalise == "each":
+        # Normalise each temperature curve (column) to its own maximum
+        values = values / values.max(axis=0)
+        ylabel = f"individually normalised {ylabel}"
+    elif normalise == "all":
+        # Global normalisation to the absolute maximum
         values = values / values.max()
-        ylabel = f"normalised {ylabel}"
+        ylabel = f"globally normalised {ylabel}"
 
     # Data Wrangling
     df = pd.DataFrame(
