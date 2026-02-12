@@ -37,9 +37,6 @@ class Rates(ReactiveModule):
         1D array of photon energies [eV] at which to evaluate spectral rates.
     temperatures : np.ndarray, optional
         1D array of temperatures [K]. Defaults to `config.temperatures_K`.
-    photon_density : float, optional
-        The incident photon flux or density. Used to scale absorption rates.
-        Defaults to `config.photon_density`.
     """
 
     def __init__(
@@ -47,15 +44,12 @@ class Rates(ReactiveModule):
         transition: Transition,
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
-        photon_density: float = None,
     ) -> None:
         self.transition = transition
-        self.photon_energies = photon_energies
         self.temperatures = config.temperatures_K if temperatures is None else temperatures
         self.photon_energies = (
             config.photon_energies if photon_energies is None else photon_energies
         )
-        self.photon_density = config.photon_density if photon_density is None else photon_density
 
         self.start_caching()
 
@@ -174,7 +168,5 @@ class Rates(ReactiveModule):
             * disorder_integral  # shape(photon_energies,temperatures)
             / norm[None, :]
         )  # shape(1,temperatures)
-        if process == ProcessType.ABSORPTION:
-            rate *= self.photon_density
 
         return rate

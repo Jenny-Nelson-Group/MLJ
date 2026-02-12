@@ -133,6 +133,33 @@ def test_no_generation_defaults_to_zero():
     np.testing.assert_allclose(result, expected)
 
 
+def test_doubling_generation_doubles_population():
+    """Doubling the generation_rate should double the resulting population for a single state."""
+    rates = [np.array([0.5])]
+    tm = TransitionMatrix(rates_to_ground=rates)
+
+    # Start with zero dark population to isolate the generation effect
+    dark_pop = [np.array([0.0])]
+    gen_base = [np.array([10.0])]
+    gen_double = [np.array([20.0])]
+
+    # calcualte steady state population for gen and 2xgen
+    result_base = solve_population(
+        dark_population=dark_pop, transition_matrix=tm, generation_rate=gen_base
+    )
+
+    # Case 2: Doubled generation rate
+    result_double = solve_population(
+        dark_population=dark_pop,
+        transition_matrix=tm,
+        generation_rate=gen_double,
+    )
+
+    # Check that the doubled result is exactly twice the base result
+    np.testing.assert_allclose(result_double, result_base * 2.0)
+    np.testing.assert_allclose(result_base, np.array([[20.0]]))
+
+
 def test_steady_state_in_dark():
     """In the dark (generation=0), the steady-state population should return the dark (thermal) population."""
     # 1. Setup a system with 2 states and some transitions

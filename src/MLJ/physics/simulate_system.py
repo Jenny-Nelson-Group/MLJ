@@ -17,7 +17,6 @@ class StateSystem(ReactiveModule):
         transitions: Sequence[Transition] | Transition,
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
-        photon_density: float = None,
         injection_current: float = 0.0,
     ) -> None:
         self.transitions = np.atleast_1d(transitions)
@@ -25,7 +24,6 @@ class StateSystem(ReactiveModule):
             photon_energies if photon_energies is not None else config.photon_energies
         )
         self.temperatures = temperatures if temperatures is not None else config.temperatures_K
-        self.photon_density = photon_density or config.photon_density
         self.injection_current = injection_current
         self.n_transitions = len(self.transitions)
         self._system_data

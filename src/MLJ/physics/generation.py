@@ -30,12 +30,8 @@ def laser_profile_gaussian(
         Shape: (N,), matching the length of photon_energies.
         Peak intensity is centered at laser_mean_energy.
     """
-    laser_mean_energy = (
-        config.laser_mean_energy if laser_mean_energy is None else laser_mean_energy
-    )
-    laser_broadening = (
-        config.laser_broadening if laser_broadening is None else laser_broadening
-    )
+    laser_mean_energy = config.laser_mean_energy if laser_mean_energy is None else laser_mean_energy
+    laser_broadening = config.laser_broadening if laser_broadening is None else laser_broadening
 
     return gaussian(x=photon_energies, mean=laser_mean_energy, sigma=laser_broadening)
 
@@ -43,9 +39,8 @@ def laser_profile_gaussian(
 def excited_state_generation(
     k_abs: np.ndarray,
     photon_energies: np.ndarray,
-    laser_intenstiy_profile_func: Callable[
-        [np.ndarray], np.ndarray
-    ] = laser_profile_gaussian,
+    photon_density: float = None,
+    laser_intenstiy_profile_func: Callable[[np.ndarray], np.ndarray] = laser_profile_gaussian,
 ) -> np.ndarray:
     """
     Calculate the total excited state generation rate by integrating the product
@@ -59,6 +54,8 @@ def excited_state_generation(
     photon_energies : np.ndarray
         Energy grid in eV.
         Shape: (n_photon_energies,).
+    photon_density : float, optional
+        The incident photon flux density in the laser. Defaults to `config.photon_density`.
     laser_intenstiy_profile_func : Callable
         A function that accepts photon_energies (n_photon_energies,) and returns a
         dimensionless relative intensity profile (n_photon_energies,).
@@ -72,6 +69,9 @@ def excited_state_generation(
         rate/cross-section and the laser source.
         Shape: (n_states, n_temperatures)
     """
+
+    photon_density = config.photon_density if photon_density is None else photon_density
+    print(photon_density)
     # Validate k_abs shape against photon_energies
     k_abs = np.asarray(k_abs)
     if k_abs.ndim != 3 or k_abs.shape[1] != len(photon_energies):
@@ -86,6 +86,6 @@ def excited_state_generation(
 
     # Define integrand for the entire spectrum for every state and every temperature
     integrand = k_abs * laser_intensity[None, :, None]
-
+    print(f"int: {integrand}")
     # Integrate over photon_energies (axis 1), return (n_states, n_temperatures)
-    return integral(integrand, photon_energies, axis=1)
+    return photon_density * integral(integrand, photon_energies, axis=1)
