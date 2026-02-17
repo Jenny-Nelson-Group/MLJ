@@ -26,7 +26,7 @@ class _Config:
     photon_density: float = 1e25  # [s-1 m-3]
     laser_mean_energy: float = 1.7  # [eV]
     laser_broadening: float = 0.1  # [dimensionless]
-    refractive_index: float = 1  # vsacuum for now
+    refractive_index: float = 1.5  # agree with previous model
 
 
 # public singleton (making sure there is only one instance of the config)

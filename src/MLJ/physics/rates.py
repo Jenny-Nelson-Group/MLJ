@@ -127,12 +127,12 @@ class Rates(ReactiveModule):
         # 1. Setup Process-Specific Parameters
         if is_non_radiative:
             calculation_energies = np.array([0.0])
-            energy_term = np.array([1.0])
+            photon_phase_space = np.array([1.0])
             prefactor = _prefactor_nrad
             coupling = transition.electronic_coupling_non_radiative
         else:
             calculation_energies = self.photon_energies
-            energy_term = self.photon_phase_space
+            photon_phase_space = self.photon_phase_space
             prefactor = _prefactor_rad
             coupling = transition.electronic_coupling_radiative
 
@@ -164,7 +164,7 @@ class Rates(ReactiveModule):
         rate = (
             prefactor  # shape(1)
             * coupling**2  # shape(1)
-            * energy_term[:, None]  # shape(photon_energies,1)
+            * photon_phase_space[:, None]  # shape(photon_energies,1)
             * disorder_integral  # shape(photon_energies,temperatures)
             / norm[None, :]
         )  # shape(1,temperatures)
