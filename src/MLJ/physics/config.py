@@ -22,15 +22,16 @@ class _Config:
     """
 
     temperatures_K: np.ndarray = field(default_factory=lambda: np.array([300.0]))
-    photon_energies: np.ndarray = field(
-        default_factory=lambda: np.linspace(0.8, 2.0, 200)
-    )
+    photon_energies: np.ndarray = field(default_factory=lambda: np.linspace(0.8, 2.0, 200))
     photon_density: float = 1
     laser_mean_energy: float = 1.7  # [Watts]
     laser_broadening: float = 0.1  # [dimensionless]
     refractive_index: float = 1  # vacuum for now
+    device_thickness: float = 1e-6  # [m]
 
 
-config = _Config()  # public singleton (making sure that only one instance of the config is used across the package)
+config = (
+    _Config()
+)  # public singleton (making sure that only one instance of the config is used across the package)
 
 __all__ = ["config"]
