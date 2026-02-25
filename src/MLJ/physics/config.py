@@ -28,6 +28,7 @@ class _Config:
     laser_broadening: float = 0.1  # [dimensionless]
     refractive_index: float = 1  # vacuum for now
     device_thickness: float = 1e-6  # [m]
+    volume_of_molecular_site: float = np.power(5e-10, 3)  # [m^3]
 
 
 config = (

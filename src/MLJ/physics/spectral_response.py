@@ -53,9 +53,9 @@ def emission(
 
 def absorption(
     photon_energies: np.ndarray,
-    optical_bandgap: float,
     spectral_absorption_rates: np.ndarray,
-    temperatures_K: np.ndarray,
+    temperatures: np.ndarray,
+    transitions: Optional[Sequence[float]] = None,
     weights: Optional[Sequence[float]] = None,
     refractive_index: Optional[float] = None,
     device_thickness: Optional[float] = None,
@@ -70,16 +70,19 @@ def absorption(
 
     Args:
         photon_energies: 1D array of photon energies [eV]. Shape: (n_E,)
-        optical_bandgap: The optical energy gap Eg [eV].
+        transitions: Array that holds all the tranistion objects
+                    considered in the system (n_transitions,)
+        volume_of_molecular_site: Volume of the molecular site the light
+        is absorbed. [m^3] Shape: float
         spectral_absorption_rates: Transition rate density per unit energy.
             Shape: (n_states, n_E, n_T)
-        temperatures_K: 1D array of temperatures [K]. Shape: (n_T,)
+        temperatures: 1D array of temperatures [K]. Shape: (n_T,)
         weights: Statistical weights for each state. Defaults to 1/n_states.
         refractive_index: Real part of refractive index (n).
         device_thickness: Thickness of device (d) [m].
 
     Returns:
-        alpha: Piecewise absorption coefficien. Shape: (n_E, n_T)
+        alpha: Piecewise absorption coefficient. Unts: [1/m] Shape: (n_E, n_T)
     """
     # Check dimensions
     if spectral_absorption_rates.ndim != 3:
@@ -93,9 +96,9 @@ def absorption(
     # Use provided values or fall back to global config
     n = refractive_index if refractive_index is not None else config.refractive_index
     device_thickness = device_thickness if device_thickness is not None else config.device_thickness
+    volume_of_molecular_site = config.volume_of_molecular_site
 
     # These factors are needed to convert k_abs into the final form for alpha
-    V_E = 1e-30  # 1 Angstrom^3 in m^3
     prefactor = (REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2) / 2
     energy_scaling = (1.0 / photon_energies_j**2).reshape(
         1, -1, 1
@@ -106,31 +109,46 @@ def absorption(
         weights = np.full(n_states, 1.0 / n_states)
     weights = np.asarray(weights).reshape(-1, 1, 1)
 
-    # 4. Calculate Low-Energy Absorption (alpha_CT + alpha_ex equivalent)
-    alpha_states = spectral_absorption_rates * n * energy_scaling * (1.0 / V_E) * prefactor
+    # 4. Calculate Low-Energy Absorption (alpha_CT + alpha_EX)
+    alpha_states = (
+        spectral_absorption_rates
+        * n
+        * energy_scaling
+        * (1.0 / volume_of_molecular_site)
+        * prefactor
+    )
     # Sum over states -> Result shape: (n_E, n_T)
     alpha_low = np.sum(alpha_states * weights, axis=0)
 
     # 5. Calculate High-Energy Square-Root Law
     photon_energies_j = photon_energies_j.reshape(-1, 1)  # (n_E, 1)
-    temperatures = temperatures_K.reshape(1, -1)  # (1, n_T)
+    temperatures = temperatures.reshape(1, -1)  # (1, n_T)
+
+    # Determine threshold when Square root law holds
+    energy_transitions = np.array(
+        [transition.state_high_energy.energy for transition in transitions]
+    )
+    highest_energy_transition = transitions[np.argmax(energy_transitions)]
+    optical_bandgap = (
+        highest_energy_transition.state_high_energy.energy
+        - highest_energy_transition.state_low_energy.energy
+        + highest_energy_transition.lambda_outer
+    )
+
+    optical_bandgap_j = optical_bandgap * UNIT_CHARGE
+    threshold = optical_bandgap_j + (2.0 * BOLTZMANN_CONSTANT_J * temperatures)
+    high_energy_mask = photon_energies_j >= threshold  # (n_E, n_T)
 
     alpha_0 = 2.0 / device_thickness
-    # Formula: alpha_0 * sqrt((hbar_omega - Eg) / (kB * T))
-    # Set to zero via np.max to avoid imaginary frequencies
-    # Convert optical bandgap to Joules first
-    optical_bandgap_j = optical_bandgap * UNIT_CHARGE
-    sqrt_term = np.sqrt(
-        np.maximum(photon_energies_j - optical_bandgap_j, 0) / (BOLTZMANN_CONSTANT_J * temperatures)
+
+    alpha = alpha_low.copy()
+    E_grid, T_grid = np.broadcast_arrays(photon_energies_j, temperatures)
+
+    # Square root behaviour of direct semicondcutor: alpha_0 * sqrt((hbar_omega - Eg) / (kB * T))
+    alpha[high_energy_mask] = alpha_0 * np.sqrt(
+        (E_grid[high_energy_mask] - optical_bandgap_j)
+        / (BOLTZMANN_CONSTANT_J * T_grid[high_energy_mask])
     )
-    alpha_high = alpha_0 * sqrt_term
-
-    # 6. Apply Piecewise Filter
-    threshold = optical_bandgap_j + (2.0 * BOLTZMANN_CONSTANT_J * temperatures)  # Shape (1, n_T)
-
-    # E_hw < threshold compares (n_E, 1) with (1, n_T) to create (n_E, n_T) mask
-    alpha = np.where(photon_energies_j < threshold, alpha_low, alpha_high)
-
     return alpha
 
 
