@@ -69,20 +69,26 @@ def absorption(
     - Above threshold: Square-root law for direct semiconductors.
 
     Args:
-        photon_energies: 1D array of photon energies [eV]. Shape: (n_E,)
-        transitions: Array that holds all the tranistion objects
-                    considered in the system (n_transitions,)
-        volume_of_molecular_site: Volume of the molecular site the light
-        is absorbed. [m^3] Shape: float
-        spectral_absorption_rates: Transition rate density per unit energy.
-            Shape: (n_states, n_E, n_T)
-        temperatures: 1D array of temperatures [K]. Shape: (n_T,)
-        weights: Statistical weights for each state. Defaults to 1/n_states.
-        refractive_index: Real part of refractive index (n).
-        device_thickness: Thickness of device (d) [m].
+        photon_energies: 1D array of photon energies.
+            Units: [eV]. Shape: (n_E,)
+        spectral_absorption_rates: Transition rates
+            for each state and temperature.
+            Units: [1/s]. Shape: (n_states, n_E, n_T)
+        temperatures: 1D array of temperatures.
+            Units: [K]. Shape: (n_T,)
+        transitions: Sequence of transition objects.
+            Units: n.A. . Shape: (n_transitions,)
+        weights: Statistical distribution weights for each transition state.
+            Defaults to uniform distribution (1/n_states).
+            Units: [Dimensionless]. Shape: (n_states,)
+        refractive_index: Refractive Index of the system
+            Units: [Dimensionless]. Shape: scalar float
+        device_thickness: The active layer thickness (d) of the semiconductor.
+            Units: [m]. Shape: scalar float
 
     Returns:
-        alpha: Piecewise absorption coefficient. Unts: [1/m] Shape: (n_E, n_T)
+        alpha: The resulting absorption coefficient.
+            Units: [1/m]. Shape: (n_E, n_T)
     """
     # Check dimensions
     if spectral_absorption_rates.ndim != 3:
@@ -93,23 +99,22 @@ def absorption(
 
     n_states, n_E, n_T = spectral_absorption_rates.shape
 
-    # Use provided values or fall back to global config
+    # Define external parameters that are independent of the transitions
     n = refractive_index if refractive_index is not None else config.refractive_index
     device_thickness = device_thickness if device_thickness is not None else config.device_thickness
     volume_of_molecular_site = config.volume_of_molecular_site
 
     # These factors are needed to convert k_abs into the final form for alpha
     prefactor = (REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2) / 2
-    energy_scaling = (1.0 / photon_energies_j**2).reshape(
-        1, -1, 1
-    )  # Energy scaling: Shape (1, n_E, 1)
+    # Energy scaling: Shape (1, n_E, 1)
+    energy_scaling = (1.0 / photon_energies_j**2).reshape(1, -1, 1)
 
-    # 3. Process Weights: Shape (n_states, 1, 1) for broadcasting
+    # State Weights: Shape (n_states, 1, 1) for broadcasting
     if weights is None:
         weights = np.full(n_states, 1.0 / n_states)
     weights = np.asarray(weights).reshape(-1, 1, 1)
 
-    # 4. Calculate Low-Energy Absorption (alpha_CT + alpha_EX)
+    # Calculate Low-Energy Absorption (e.g., alpha_CT + alpha_EX)
     alpha_states = (
         spectral_absorption_rates
         * n
@@ -120,7 +125,7 @@ def absorption(
     # Sum over states -> Result shape: (n_E, n_T)
     alpha_low = np.sum(alpha_states * weights, axis=0)
 
-    # 5. Calculate High-Energy Square-Root Law
+    # Calculate High-Energy Square-Root Law
     photon_energies_j = photon_energies_j.reshape(-1, 1)  # (n_E, 1)
     temperatures = temperatures.reshape(1, -1)  # (1, n_T)
 
