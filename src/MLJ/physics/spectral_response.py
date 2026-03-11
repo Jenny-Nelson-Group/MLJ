@@ -2,7 +2,12 @@ import numpy as np
 from typing import Sequence, Optional
 
 from MLJ.physics.config import config
-from MLJ.physics.constants import REDUCED_PLANCK_CONSTANT_JS, SPEED_OF_LIGHT
+from MLJ.physics.constants import (
+    REDUCED_PLANCK_CONSTANT_JS,
+    SPEED_OF_LIGHT,
+    BOLTZMANN_CONSTANT_J,
+    UNIT_CHARGE,
+)
 
 
 def emission(
@@ -49,79 +54,128 @@ def emission(
 def absorption(
     photon_energies: np.ndarray,
     spectral_absorption_rates: np.ndarray,
+    temperatures: np.ndarray,
+    transitions: Optional[Sequence[float]] = None,
     weights: Optional[Sequence[float]] = None,
     refractive_index: Optional[float] = None,
-    photon_density: Optional[float] = None,
+    device_thickness: Optional[float] = None,
 ) -> np.ndarray:
     """
-    Calculate spectral absoprtion from absorption rates.
+    Calculate absorption coefficient alpha(hw) using a piecewise
+    model combining transition rates and the square-root law.
 
-    Parameters
-    ----------
-    photon_energies : np.ndarray
-        1D array of photon energies
-        Shape: (n_photon_energies,)
-    spectral_absorption_rates : np.ndarray
-        The transition rate density per unit energy for each state/condition.
-        Shape: (n_states, n_photon_energies, n_temps)
-    weights : Sequence[float], optional
-        Statistical weights for each electronic state.
-        Defaults to uniform weighting (1/n_states).
-        Shape: (n_states,)
-    refractive_index : float, optional
-        Real part of the complex refractive index. If None, retrieves from `config`.
-    photon_density : float, optional
-        Number of photons or sites per unit volume. If None, retrieves from `config`.
-        Typical units: [m^-3].
+    The model follows:
+    - Below threshold (Eg + 2kbT): Weighted sum of rates that depend on states in system.
+    - Above threshold: Square-root law for direct semiconductors.
 
-    Returns
-    -------
-    total_absorption : np.ndarray
-        The weighted macroscopic absorption coefficient alpha.
-        Shape: (n_photon_energies, n_temps)
-        Units: [m^-1] (if input units are SI).
+    Args:
+        photon_energies: 1D array of photon energies.
+            Units: [eV]. Shape: (n_E,)
+        spectral_absorption_rates: Transition rates
+            for each state and temperature.
+            Units: [1/s]. Shape: (n_states, n_E, n_T)
+        temperatures: 1D array of temperatures.
+            Units: [K]. Shape: (n_T,)
+        transitions: Sequence of transition objects.
+            Units: n.A. . Shape: (n_transitions,)
+        weights: Statistical distribution weights for each transition state.
+            Defaults to uniform distribution (1/n_states).
+            Units: [Dimensionless]. Shape: (n_states,)
+        refractive_index: Refractive Index of the system
+            Units: [Dimensionless]. Shape: scalar float
+        device_thickness: The active layer thickness (d) of the semiconductor.
+            Units: [m]. Shape: scalar float
+
+    Returns:
+        alpha: The resulting absorption coefficient.
+            Units: [1/m]. Shape: (n_E, n_T)
     """
-    # Check that the dimensionality is correct
+    # Check dimensions
     if spectral_absorption_rates.ndim != 3:
-        raise ValueError(
-            f"spectral_absorption_rate must have ndim=3,"
-            f"but it has ndim={spectral_absorption_rates.ndim}"
-        )
+        raise ValueError(f"Expected 3D rates, got {spectral_absorption_rates.ndim}D")
 
-    n_states, _, _ = spectral_absorption_rates.shape
-    refractive_index = (
-        refractive_index if refractive_index is not None else config.refractive_index
-    )
-    photon_density = (
-        photon_density if photon_density is not None else config.photon_density
-    )
+    # Convert photon energies in eV to J
+    photon_energies_j = photon_energies * UNIT_CHARGE  # [J]
 
-    # Pre-calculated constants
-    volume = 1e-30  # 1 Angstrom^3 in m^3
-    numerical_pre_factor = (
-        REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2
-    ) / 4
+    n_states, n_E, n_T = spectral_absorption_rates.shape
 
-    weights = np.asarray(weights if weights is not None else [1 / n_states] * n_states)
-    # Reshape weights to match dimensionality of n_states
-    weights = weights.reshape(-1, 1, 1)
+    # Define external parameters that are independent of the transitions
+    n = refractive_index if refractive_index is not None else config.refractive_index
+    device_thickness = device_thickness if device_thickness is not None else config.device_thickness
+    volume_of_molecular_site = config.volume_of_molecular_site
 
-    # Reshape energy to (1, n_photon_energies, 1)
-    energy_scaling = (1.0 / photon_energies**2).reshape(1, -1, 1)
+    # These factors are needed to convert k_abs into the final form for alpha
+    prefactor = (REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2) / 2
+    # Energy scaling: Shape (1, n_E, 1)
+    energy_scaling = (1.0 / photon_energies_j**2).reshape(1, -1, 1)
 
-    # Calculate state-specific alpha: (n_states, n_photon_energies, n_temps)
+    # State Weights: Shape (n_states, 1, 1) for broadcasting
+    if weights is None:
+        weights = np.full(n_states, 1.0 / n_states)
+    weights = np.asarray(weights).reshape(-1, 1, 1)
+
+    # Calculate Low-Energy Absorption (e.g., alpha_CT + alpha_EX)
     alpha_states = (
         spectral_absorption_rates
-        * refractive_index
+        * n
         * energy_scaling
-        * (1.0 / (photon_density * volume))
-        * numerical_pre_factor
+        * (1.0 / volume_of_molecular_site)
+        * prefactor
+    )
+    # Sum over states -> Result shape: (n_E, n_T)
+    alpha_low = np.sum(alpha_states * weights, axis=0)
+
+    # Calculate High-Energy Square-Root Law
+    photon_energies_j = photon_energies_j.reshape(-1, 1)  # (n_E, 1)
+    temperatures = temperatures.reshape(1, -1)  # (1, n_T)
+
+    # Determine threshold when Square root law holds
+    energy_transitions = np.array(
+        [transition.state_high_energy.energy for transition in transitions]
+    )
+    highest_energy_transition = transitions[np.argmax(energy_transitions)]
+    optical_bandgap = (
+        highest_energy_transition.state_high_energy.energy
+        - highest_energy_transition.state_low_energy.energy
+        + highest_energy_transition.lambda_outer
     )
 
-    # Sum over states axis (axis 0) resulting shape: (n_photon_energies, n_temps)
-    total_absorption = np.sum(alpha_states * weights, axis=0)
+    optical_bandgap_j = optical_bandgap * UNIT_CHARGE
+    threshold = optical_bandgap_j + (2.0 * BOLTZMANN_CONSTANT_J * temperatures)
+    high_energy_mask = photon_energies_j >= threshold  # (n_E, n_T)
 
-    return total_absorption
+    alpha_0 = 2.0 / device_thickness
+
+    alpha = alpha_low.copy()
+    E_grid, T_grid = np.broadcast_arrays(photon_energies_j, temperatures)
+
+    # Square root behaviour of direct semicondcutor: alpha_0 * sqrt((hbar_omega - Eg) / (kB * T))
+    alpha[high_energy_mask] = alpha_0 * np.sqrt(
+        (E_grid[high_energy_mask] - optical_bandgap_j)
+        / (BOLTZMANN_CONSTANT_J * T_grid[high_energy_mask])
+    )
+    return alpha
 
 
-# TODO: Implement absorptance
+def absorptance(
+    alpha: np.ndarray,
+    device_thickness: Optional[float] = None,
+) -> np.ndarray:
+    """
+    Calculate the spectral absorptance A(E) using the Beer-Lambert law.
+
+    Args:
+        alpha: Absorption coefficient [m^-1].
+               Shape: (n_photon_energies, n_temps)
+        device_thickness: Thickness of the device (d) [m].
+
+    Returns:
+        absorptance: Dimensionless fraction of absorbed photons [0, 1].
+                     Shape: (n_photon_energies, n_temps)
+    """
+    d = device_thickness if device_thickness is not None else config.device_thickness
+
+    # Absorptance shape: (n_E, n_T)
+    absorptance = 1 - np.exp(-2 * d * alpha)
+
+    return absorptance

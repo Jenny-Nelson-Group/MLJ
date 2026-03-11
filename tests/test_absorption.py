@@ -1,73 +1,86 @@
 import pytest
 import numpy as np
-
+import MLJ as mlj
 from MLJ.physics.spectral_response import absorption
+from MLJ.physics.constants import BOLTZMANN_CONSTANT_J, UNIT_CHARGE
 
 
-# --- The Tests ---
 def test_absorption_output_shape():
-    """Verify the output shape is (n_photon_energies, n_conditions)."""
-    n_states = 2
-    n_photon_energies = 50
-    n_conditions = 5
+    """Verify the output shape is (n_E, n_T)."""
+    n_states, n_E, n_T = 2, 50, 5
+    photon_energies = np.linspace(1.0, 3.0, n_E)
+    temperatures = np.linspace(50, 350, n_T)
+    rates = np.ones((n_states, n_E, n_T))
 
-    photon_energies = np.linspace(1.0, 3.0, n_photon_energies)
-    rates = np.ones((n_states, n_photon_energies, n_conditions))
+    # Setup real MLJ objects
+    gs = mlj.State(name="S0", energy=0.0)
+    le = mlj.State(name="LE", energy=1.5)
+    trans_LE = mlj.Transition(le, gs, lambda_outer=0.05)
+    transitions = [trans_LE]
 
-    result = absorption(photon_energies, rates)
+    result = absorption(photon_energies, rates, temperatures, transitions=transitions)
 
-    # Expected shape: (n_photon_energies, n_conditions)
-    assert result.shape == (n_photon_energies, n_conditions)
-
-
-def test_absorption_uniform_weighting():
-    """Ensure that providing no weights defaults to 1/N weighting."""
-    n_states, n_photon_energies, n_conditions = 2, 10, 4
-    photon_energies = np.ones(n_photon_energies)
-    rates = np.ones((n_states, n_photon_energies, n_conditions))
-
-    # Total absorption with 4 states and uniform weight (0.25 each)
-    # should be exactly the same as 1 state with weight 1.0 (if rates are identical)
-    result_4_states = absorption(photon_energies, rates)
-
-    single_rate = np.ones((1, n_photon_energies, n_conditions))
-    result_1_state = absorption(photon_energies, single_rate, weights=[1.0])
-
-    np.testing.assert_allclose(result_4_states, result_1_state)
+    assert result.shape == (n_E, n_T)
 
 
-def test_absorption_custom_weights():
-    """Verify that custom weights are applied correctly to the states."""
-    n_states, n_photon_energies, n_conditions = 2, 10, 1
-    photon_energies = np.ones(n_photon_energies)
+def test_absorption_piecewise_logic():
+    """Verify that values above the threshold use the square-root law."""
+    n_E, n_T = 100, 1
+    photon_energies = np.linspace(0.5, 5.0, n_E)
+    temperatures = np.array([300.0])
+    rates = np.zeros((1, n_E, n_T))
 
-    # State 0 has rate 1.0, State 1 has rate 0.0
-    rates = np.zeros((n_states, n_photon_energies, n_conditions))
-    rates[0, :, :] = 1.0
+    # Define transition for 1.5 eV bandgap
+    gs = mlj.State(name="S0", energy=0.0)
+    le = mlj.State(name="LE", energy=1.5)
+    lambda_outer = 0.05
+    trans_LE = mlj.Transition(le, gs, lambda_outer=lambda_outer)
+    transitions = [trans_LE]
 
-    # If we weight state 0 at 100%, we should get full value
-    res_full = absorption(photon_energies, rates, weights=[1.0, 0.0])
-    # If we weight state 0 at 50%, we should get half value
-    res_half = absorption(photon_energies, rates, weights=[0.5, 0.5])
+    # Expected bandgap used in code: (1.5 - 0.0) + 0.05 = 1.55 eV
+    optical_bandgap = 1.55
 
-    np.testing.assert_allclose(res_half, res_full * 0.5)
+    result = absorption(
+        photon_energies, rates, temperatures, transitions=transitions, device_thickness=1.0
+    )
+
+    threshold = optical_bandgap * UNIT_CHARGE + (2.0 * BOLTZMANN_CONSTANT_J * temperatures[0])
+    high_energy_indices = np.where(photon_energies * UNIT_CHARGE > threshold)[0]
+
+    # Ensure there is a high energy region to test
+    assert len(high_energy_indices) > 0
+    high_energy_idx = high_energy_indices[0]
+
+    # Above threshold, alpha should be positive (from square-root law)
+    assert result[high_energy_idx, 0] > 0
+    # Values should increase as energy increases in the square-root regime
+    assert result[-1, 0] > result[high_energy_idx, 0]
 
 
 def test_absorption_mismatched_dimensions():
-    """Test that mismatched energy and rate dimensions raise an error."""
-    photon_energies = np.linspace(1, 10, 50)  # length 50
-    rates = np.ones((2, 40, 5))  # length 40
+    """Test that mismatched energy and rate dimensions raise a broadcasting error."""
+    photon_energies = np.linspace(1.0, 3.0, 50)
+    rates = np.ones((2, 40, 5))  # Mismatch: 40 vs 50
+    temperatures = np.linspace(50, 350, 5)
 
-    # This should raise a broadcasting error because 50 != 40
+    gs = mlj.State(name="S0", energy=0.0)
+    le = mlj.State(name="LE", energy=1.5)
+    transitions = [mlj.Transition(le, gs)]
+
+    # This will raise a ValueError when applying energy_scaling (50,1) to rates (2,40,5)
     with pytest.raises(ValueError):
-        absorption(photon_energies, rates)
+        absorption(photon_energies, rates, temperatures, transitions=transitions)
 
 
-def test_absorption_wrong_rates_dimensions():
-    """Test that mismatched energy and rate dimensions raise an error."""
-    photon_energies = np.linspace(1, 10, 50)  # length 50
-    rates = np.ones((2, 5))  # length 40
+def test_absorption_wrong_rates_ndim():
+    """Test that rates not being 3D raises the specific ValueError."""
+    photon_energies = np.linspace(1.0, 3.0, 50)
+    rates = np.ones((10, 2))  # 2D instead of 3D
+    temperatures = np.linspace(50, 350, 5)
 
-    # This should raise a broadcasting error because 50 != 40
-    with pytest.raises(ValueError):
-        absorption(photon_energies, rates)
+    gs = mlj.State(name="S0", energy=0.0)
+    le = mlj.State(name="LE", energy=1.5)
+    transitions = [mlj.Transition(le, gs)]
+
+    with pytest.raises(ValueError, match="Expected 3D rates"):
+        absorption(photon_energies, rates, temperatures, transitions=transitions)

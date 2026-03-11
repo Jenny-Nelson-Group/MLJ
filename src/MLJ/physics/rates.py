@@ -174,7 +174,4 @@ class Rates(ReactiveModule):
             * disorder_integral  # shape(photon_energies,temperatures)
             / norm[None, :]
         )  # shape(1,temperatures)
-        if process == ProcessType.ABSORPTION:
-            rate *= self.photon_density
-
         return rate

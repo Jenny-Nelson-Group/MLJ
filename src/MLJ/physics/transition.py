@@ -46,10 +46,7 @@ class Transition(ReactiveModule):
 
         self.determine_high_low_energy_state(state_low_energy, state_high_energy)
 
-        if (
-            self.state_low_energy.energy == 0
-            and self.state_low_energy != Transition.GROUND_STATE
-        ):
+        if self.state_low_energy.energy == 0 and self.state_low_energy != Transition.GROUND_STATE:
             Transition.GROUND_STATE = self.state_low_energy
 
         self.oscillator_strength: float = oscillator_strength
@@ -57,6 +54,10 @@ class Transition(ReactiveModule):
 
         self.lambda_inner: float = lambda_inner
         self.lambda_outer: float = lambda_outer
+
+        self.optical_bandgap: float = (
+            state_high_energy.energy - state_low_energy.energy + self.lambda_outer
+        )
 
         self.electronic_coupling_rad_func = cpl.transition_dipole_moment
         self.electronic_coupling_nrad_func = cpl.mulliken_hush_coupling
