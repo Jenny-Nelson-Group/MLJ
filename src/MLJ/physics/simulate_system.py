@@ -133,6 +133,11 @@ class StateSystem(ReactiveModule):
             recombination_rates=k_rad_spectral,
         )
 
+    @property
+    def ground_transitions(self):
+        """Returns a list of all transitions that connect to the ground state."""
+        return [t for t in self.transitions if t.index[1] == 0]
+
     @read_only_cached_property
     def absorbance(self):
         """Returns the absorption spectrum of the system."""
@@ -140,4 +145,6 @@ class StateSystem(ReactiveModule):
         return absorption(
             photon_energies=self.photon_energies,
             spectral_absorption_rates=k_rad_spectral,
+            temperatures=self.temperatures,
+            transitions=self.ground_transitions,
         )

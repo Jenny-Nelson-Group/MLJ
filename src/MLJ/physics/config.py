@@ -26,10 +26,11 @@ class _Config:
     photon_density: float = 1e25  # [s-1 m-3]
     laser_mean_energy: float = 1.7  # [eV]
     laser_broadening: float = 0.1  # [dimensionless]
-    refractive_index: float = 1.5  # agree with previous model
+    refractive_index: float = 1.5  # vacuum for now
+    device_thickness: float = 1e-6  # [m]
+    volume_of_molecular_site: float = np.power(5e-10, 3)  # [m^3]
 
 
 # public singleton (making sure there is only one instance of the config)
 config = _Config()
-
 __all__ = ["config"]
