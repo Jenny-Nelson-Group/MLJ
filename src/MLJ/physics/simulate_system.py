@@ -1,10 +1,10 @@
 from MLJ.physics.transition import Transition
-from MLJ.physics.spectral_response import emission
+from MLJ.physics.spectral_response import emission, absorption
 from MLJ.physics.rates import Rates
-from MLJ.physics.basics import boltzmann
+from MLJ.physics.basics import boltzmann, current_to_electrons
 from MLJ.physics.config import config
 from MLJ.physics.population_dark import states_dark_population
-from MLJ.physics.population_light import states_light_population, TransitionMatrix
+from MLJ.physics.population_light import solve_population, TransitionMatrix
 from MLJ.physics.generation import excited_state_generation
 from MLJ.helpers.caching import read_only_cached_property, ReactiveModule
 from typing import Sequence, Tuple, Dict
@@ -17,16 +17,14 @@ class StateSystem(ReactiveModule):
         transitions: Sequence[Transition] | Transition,
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
-        photon_density: float = None,
+        injection_current: float = 0.0,
     ) -> None:
         self.transitions = np.atleast_1d(transitions)
         self.photon_energies = (
             photon_energies if photon_energies is not None else config.photon_energies
         )
-        self.temperatures = (
-            temperatures if temperatures is not None else config.temperatures_K
-        )
-        self.photon_density = photon_density or config.photon_density
+        self.temperatures = temperatures if temperatures is not None else config.temperatures_K
+        self.injection_current = injection_current
         self.n_transitions = len(self.transitions)
         self._system_data
         self.start_caching()
@@ -60,8 +58,8 @@ class StateSystem(ReactiveModule):
                         f", but temperatures have shape {self.temperatures.shape}."
                     )
                 k_up = k_down * boltzmann(trans.mean_gibbs_energy, self.temperatures)
-                transfer_dict[(low_idx, high_idx)] = k_down # downhill: high -> low
-                transfer_dict[(high_idx, low_idx)] = k_up   # uphill: low -> high
+                transfer_dict[(high_idx, low_idx)] = k_down  # downhill: high -> low
+                transfer_dict[(low_idx, high_idx)] = k_up  # uphill: low -> high
 
         return rates, transfer_dict
 
@@ -81,24 +79,44 @@ class StateSystem(ReactiveModule):
         return TransitionMatrix(k_ground_total, self.transfers)
 
     @read_only_cached_property
-    def generation(self):
+    def generation_light(self):
         # (n_states, n_photon_energies, n_temps)
         absorption_rates = [r.rate_absorption_spectral for r in self.rates]
         return excited_state_generation(absorption_rates, self.photon_energies)
 
     @read_only_cached_property
+    def generation_injection(self):
+        """
+        Return the generation rate (n_states, n_temperatures) from injection current.
+        All the states are injected into the lowest energy states.
+        """
+        generation_injection = np.zeros_like(self.populations_dark)
+        generation_injection[0, :] = current_to_electrons(self.injection_current)
+        return generation_injection
+
+    @read_only_cached_property
     def populations_dark(self):
         """Returns a NumPy array of Rates objects for each transition."""
-        return states_dark_population(self.sorted_states, self.temperatures)
+        pop_dark = states_dark_population(self.sorted_states, self.temperatures)
+        return pop_dark
 
     @read_only_cached_property
     def populations_light(self):
-        return states_light_population(
-            self.transition_matrix, self.populations_dark, self.generation
+        """Returns the steady state population under light bias."""
+        return solve_population(
+            self.transition_matrix, self.populations_dark, self.generation_light
+        )
+
+    @read_only_cached_property
+    def populations_injection(self):
+        """Returns the steady states population under injection current."""
+        return solve_population(
+            self.transition_matrix, self.populations_dark, self.generation_injection
         )
 
     @read_only_cached_property
     def emission_photoluminescence(self):
+        """Returns the photoluminescence of the system."""
         k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
         return emission(
             populations=self.populations_light,
@@ -106,9 +124,27 @@ class StateSystem(ReactiveModule):
         )
 
     @read_only_cached_property
-    def absorption(self):
-        # ToDo: placeholder for actual absorption spectrum
-        k_abs_spectral = np.sum(
-            [r.rate_absorption_spectral for r in self.rates], axis=0
+    def emission_electroluminescence(self):
+        """Returns the electroluminescence of the system."""
+        # emission is calculated from the steady state population after injecting current
+        k_rad_spectral = [r.rate_radiative_spectral for r in self.rates]
+        return emission(
+            populations=self.populations_injection,
+            recombination_rates=k_rad_spectral,
         )
-        return k_abs_spectral
+
+    @property
+    def ground_transitions(self):
+        """Returns a list of all transitions that connect to the ground state."""
+        return [t for t in self.transitions if t.index[1] == 0]
+
+    @read_only_cached_property
+    def absorbance(self):
+        """Returns the absorption spectrum of the system."""
+        k_rad_spectral = [r.rate_absorption_spectral for r in self.rates]
+        return absorption(
+            photon_energies=self.photon_energies,
+            spectral_absorption_rates=k_rad_spectral,
+            temperatures=self.temperatures,
+            transitions=self.ground_transitions,
+        )

@@ -1,41 +1,82 @@
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-from MLJ.physics.simulate_system import StateSystem
 
 
-def plot_PL(system: StateSystem):
+def _base_plotter(energies, values, temperatures, ylabel, ax=None, normalise=False, **kwargs):
+    """Internal function to handle data processing for plotting."""
+    ax = ax or plt.gca()
+
+    # Normalization Logic
+    if normalise == "each":
+        # Normalise each temperature curve (column) to its own maximum
+        values = values / values.max(axis=0)
+        ylabel = f"individually normalised {ylabel}"
+    elif normalise == "all":
+        # Global normalisation to the absolute maximum
+        values = values / values.max()
+        ylabel = f"globally normalised {ylabel}"
+
+    # Data Wrangling
     df = pd.DataFrame(
-        system.emission_photoluminescence,
-        index=system.photon_energies,
-        columns=system.temperatures,
-    ).melt(ignore_index=False, var_name="Temperature (K)", value_name="PL Intensity")
+        values,
+        index=energies,
+        columns=temperatures,
+    ).melt(ignore_index=False, var_name="Temperature (K)", value_name=ylabel)
 
-    # Visual Fluff
-    sns.set_style("ticks")  # Clean, professional look
-    plt.figure(figsize=(9, 6))
-
-    plot = sns.lineplot(
+    # Plotting
+    sns.lineplot(
         data=df,
         x=df.index,
-        y="PL Intensity",
+        y=ylabel,
         hue="Temperature (K)",
         palette="coolwarm",
         linewidth=2,
+        ax=ax,
+        **kwargs,
     )
 
-    # Aesthetic touches
-    plt.title(
-        f"Photoluminescence Spectrum: {len(system.sorted_states)} State System",
-        fontsize=14,
-        pad=15,
+    # Formatting
+    ax.set_xlabel("Photon Energy (eV)", fontweight="bold")
+    ax.set_ylabel(f"{ylabel} (arb. u.)", fontweight="bold")
+    ax.grid(True, linestyle="--", alpha=0.6)
+    return ax
+
+
+# --- Clean Public Functions ---
+
+
+def plot_PL(system, ax=None, normalise=False, **kwargs):
+    return _base_plotter(
+        system.photon_energies,
+        system.emission_photoluminescence,
+        system.temperatures,
+        "PL Intensity",
+        ax,
+        normalise=normalise,
+        **kwargs,
     )
-    plt.xlabel("Photon Energy (eV)", fontweight="bold")
-    plt.ylabel("Intensity (arb. u.)", fontweight="bold")
-    plt.grid(True, linestyle="--", alpha=0.6)
 
-    # Move legend outside so it doesn't block the peaks
-    plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left", title="Temperature")
-    plt.tight_layout()
 
-    return plot
+def plot_EL(system, ax=None, normalise=False, **kwargs):
+    return _base_plotter(
+        system.photon_energies,
+        system.emission_electroluminescence,
+        system.temperatures,
+        "EL Intensity",
+        ax,
+        normalise=normalise,
+        **kwargs,
+    )
+
+
+def plot_Absorbance(system, ax=None, normalise=False, **kwargs):
+    return _base_plotter(
+        system.photon_energies,
+        system.absorbance,
+        system.temperatures,
+        "Absorbance",
+        ax,
+        normalise=normalise,
+        **kwargs,
+    )

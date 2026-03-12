@@ -55,7 +55,7 @@ def absorption(
     photon_energies: np.ndarray,
     spectral_absorption_rates: np.ndarray,
     temperatures: np.ndarray,
-    transitions: Optional[Sequence[float]] = None,
+    transitions: Optional[Sequence[float]],
     weights: Optional[Sequence[float]] = None,
     refractive_index: Optional[float] = None,
     device_thickness: Optional[float] = None,
@@ -90,13 +90,12 @@ def absorption(
         alpha: The resulting absorption coefficient.
             Units: [1/m]. Shape: (n_E, n_T)
     """
-    # Check dimensions
+
+    spectral_absorption_rates = np.asarray(spectral_absorption_rates)
     if spectral_absorption_rates.ndim != 3:
         raise ValueError(f"Expected 3D rates, got {spectral_absorption_rates.ndim}D")
 
-    # Convert photon energies in eV to J
     photon_energies_j = photon_energies * UNIT_CHARGE  # [J]
-
     n_states, n_E, n_T = spectral_absorption_rates.shape
 
     # Define external parameters that are independent of the transitions
@@ -105,7 +104,9 @@ def absorption(
     volume_of_molecular_site = config.volume_of_molecular_site
 
     # These factors are needed to convert k_abs into the final form for alpha
-    prefactor = (REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2) / 2
+    prefactor = (
+        REDUCED_PLANCK_CONSTANT_JS**3 * SPEED_OF_LIGHT**2 * np.pi**2
+    ) / 2  # TODO! what is correct 1/2 or 1/4?
     # Energy scaling: Shape (1, n_E, 1)
     energy_scaling = (1.0 / photon_energies_j**2).reshape(1, -1, 1)
 

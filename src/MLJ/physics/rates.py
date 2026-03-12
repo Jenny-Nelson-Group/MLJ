@@ -37,9 +37,6 @@ class Rates(ReactiveModule):
         1D array of photon energies [eV] at which to evaluate spectral rates.
     temperatures : np.ndarray, optional
         1D array of temperatures [K]. Defaults to `config.temperatures_K`.
-    photon_density : float, optional
-        The incident photon flux or density. Used to scale absorption rates.
-        Defaults to `config.photon_density`.
     """
 
     def __init__(
@@ -47,15 +44,12 @@ class Rates(ReactiveModule):
         transition: Transition,
         photon_energies: np.ndarray = None,
         temperatures: np.ndarray = None,
-        photon_density: float = None,
     ) -> None:
         self.transition = transition
-        self.photon_energies = photon_energies
         self.temperatures = config.temperatures_K if temperatures is None else temperatures
         self.photon_energies = (
             config.photon_energies if photon_energies is None else photon_energies
         )
-        self.photon_density = config.photon_density if photon_density is None else photon_density
 
         self.start_caching()
 
@@ -133,12 +127,12 @@ class Rates(ReactiveModule):
         # 1. Setup Process-Specific Parameters
         if is_non_radiative:
             calculation_energies = np.array([0.0])
-            energy_term = np.array([1.0])
+            photon_phase_space = np.array([1.0])
             prefactor = _prefactor_nrad
             coupling = transition.electronic_coupling_non_radiative
         else:
             calculation_energies = self.photon_energies
-            energy_term = self.photon_phase_space
+            photon_phase_space = self.photon_phase_space
             prefactor = _prefactor_rad
             coupling = transition.electronic_coupling_radiative
 
@@ -170,8 +164,9 @@ class Rates(ReactiveModule):
         rate = (
             prefactor  # shape(1)
             * coupling**2  # shape(1)
-            * energy_term[:, None]  # shape(photon_energies,1)
+            * photon_phase_space[:, None]  # shape(photon_energies,1)
             * disorder_integral  # shape(photon_energies,temperatures)
             / norm[None, :]
         )  # shape(1,temperatures)
+
         return rate

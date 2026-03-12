@@ -24,8 +24,8 @@ class TransitionMatrix:
 
     Notes:
         The system matrix $A$ is constructed such that for each condition $m$:
-        - Off-diagonal: $A_{i,j} = -k_{j \to i}$
-        - Diagonal: $A_{i,i} = k_{rec, i} + \sum_{j \neq i} k_{i \to j}$
+        - Off-diagonal: A_ij = -k_ji
+        - Diagonal: A_ii = k_i0 + sum (over j!=i) of k_ij
     """
 
     rates_to_ground: Sequence[np.ndarray | float]
@@ -76,7 +76,7 @@ class TransitionMatrix:
         return (n_states, n_cond)
 
 
-def states_light_population(
+def solve_population(
     transition_matrix: TransitionMatrix,
     dark_population: Sequence[np.ndarray],
     generation_rate: Sequence[np.ndarray] | None = None,

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from MLJ.physics.population_light import TransitionMatrix, states_light_population
+from MLJ.physics.population_light import TransitionMatrix, solve_population
 
 
 def test_transition_matrix_float_rates():
@@ -87,7 +87,7 @@ def test_solver_accuracy_floats():
     tm = TransitionMatrix(rates_to_ground=rates, transfers=transfers)
 
     # inputs are (n_states, n_temps)
-    result = states_light_population(
+    result = solve_population(
         dark_population=np.array([[0.0], [0.0]]),
         generation_rate=np.array([[1.0], [0.0]]),
         transition_matrix=tm,
@@ -96,9 +96,7 @@ def test_solver_accuracy_floats():
     # Hand-calculated steady state:
     # State 0: 1.0 = (0.1 + 0.5) * n0  => n0 = 1.0 / 0.6 = 1.666
     # State 1: 0.5 * n0 = 0.1 * n1     => n1 = 5 * n0 = 8.333
-    expected = np.array(
-        [[1.0 / 0.6], [5.0 / 0.6]]
-    )  # output should be (n_states, n_temps)
+    expected = np.array([[1.0 / 0.6], [5.0 / 0.6]])  # output should be (n_states, n_temps)
     np.testing.assert_allclose(result, expected)
 
 
@@ -108,7 +106,7 @@ def test_solver_accuracy_arrays():
     trans = {(1, 2): np.array([0.3, 0.5])}
     tm = TransitionMatrix(rates_to_ground=rates, transfers=trans)
 
-    result = states_light_population(
+    result = solve_population(
         dark_population=[np.array([0.1, 0.0]), np.array([0.2, 0.0])],
         generation_rate=[np.array([1.2, 1.0]), np.array([0.1, 0.0])],
         transition_matrix=tm,
@@ -128,11 +126,38 @@ def test_no_generation_defaults_to_zero():
     # Steady state: 0 = gen - rec * (n - pop) => n = pop (if gen=0)
     pop = [np.array([1.0, 2.0]), np.array([1.0, 2.0])]
 
-    result = states_light_population(dark_population=pop, transition_matrix=tm)
+    result = solve_population(dark_population=pop, transition_matrix=tm)
 
     # With zero generation and no transitions, light population should equal dark population
     expected = np.array([[1.0, 2.0], [1.0, 2.0]])
     np.testing.assert_allclose(result, expected)
+
+
+def test_doubling_generation_doubles_population():
+    """Doubling the generation_rate should double the resulting population for a single state."""
+    rates = [np.array([0.5])]
+    tm = TransitionMatrix(rates_to_ground=rates)
+
+    # Start with zero dark population to isolate the generation effect
+    dark_pop = [np.array([0.0])]
+    gen_base = [np.array([10.0])]
+    gen_double = [np.array([20.0])]
+
+    # calcualte steady state population for gen and 2xgen
+    result_base = solve_population(
+        dark_population=dark_pop, transition_matrix=tm, generation_rate=gen_base
+    )
+
+    # Case 2: Doubled generation rate
+    result_double = solve_population(
+        dark_population=dark_pop,
+        transition_matrix=tm,
+        generation_rate=gen_double,
+    )
+
+    # Check that the doubled result is exactly twice the base result
+    np.testing.assert_allclose(result_double, result_base * 2.0)
+    np.testing.assert_allclose(result_base, np.array([[20.0]]))
 
 
 def test_steady_state_in_dark():
@@ -149,15 +174,11 @@ def test_steady_state_in_dark():
 
     # 3. Solve with generation_rate = 0 (or None)
     # The solver uses: A * n = G + k_rec * n_dark
-    result = states_light_population(
-        dark_population=p_dark, transition_matrix=tm, generation_rate=None
-    )
+    result = solve_population(dark_population=p_dark, transition_matrix=tm, generation_rate=None)
 
     # 4. Assert result == p_dark
     expected = np.array(p_dark)
-    np.testing.assert_allclose(
-        result, expected, err_msg="Solver failed to recover P_dark at G=0"
-    )
+    np.testing.assert_allclose(result, expected, err_msg="Solver failed to recover P_dark at G=0")
 
 
 def test_mismatched_generation_population():
@@ -165,9 +186,7 @@ def test_mismatched_generation_population():
     tm = TransitionMatrix(rates_to_ground=[0.1, 0.2])
 
     with pytest.raises(ValueError):
-        states_light_population(
-            dark_population=[0.0, 1.0], generation_rate=[0.0], transition_matrix=tm
-        )
+        solve_population(dark_population=[0.0, 1.0], generation_rate=[0.0], transition_matrix=tm)
 
 
 def test_mismatched_matrix_population():
@@ -175,7 +194,7 @@ def test_mismatched_matrix_population():
     tm = TransitionMatrix(rates_to_ground=[0.1])
 
     with pytest.raises(ValueError):
-        states_light_population(
+        solve_population(
             dark_population=[0.0, 0.2], generation_rate=[1.0, 0.0], transition_matrix=tm
         )
 
@@ -185,7 +204,7 @@ def test_mismatched_conditions():
     tm = TransitionMatrix(rates_to_ground=[np.array([0.0, 1.0]), np.array([0.0, 1.0])])
 
     with pytest.raises(ValueError):
-        states_light_population(
+        solve_population(
             dark_population=[np.array([0.0]), np.array([0.0, 1.0])],
             generation_rate=[np.array([0.0, 1.0]), np.array([0.0, 1.0])],
             transition_matrix=tm,

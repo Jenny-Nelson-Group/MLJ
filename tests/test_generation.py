@@ -30,10 +30,16 @@ def test_custom_laser_profile_is_called():
 
     # Test custom laser profiles (delta peak, all zeros)
     res_ones = excited_state_generation(
-        k_abs, photon_energies, lambda x: np.ones_like(x)
+        k_abs=k_abs,
+        photon_energies=photon_energies,
+        photon_density=1e25,
+        laser_intenstiy_profile_func=lambda x: np.ones_like(x),
     )
     res_zeros = excited_state_generation(
-        k_abs, photon_energies, lambda x: np.zeros_like(x)
+        k_abs=k_abs,
+        photon_energies=photon_energies,
+        photon_density=1e25,
+        laser_intenstiy_profile_func=lambda x: np.zeros_like(x),
     )
     assert np.all(res_zeros == 0)
     assert np.all(res_ones > 0)
@@ -46,6 +52,17 @@ def test_linearity_scaling():
 
     val1 = excited_state_generation(k_abs, energies)
     val2 = excited_state_generation(k_abs * 2, energies)
+
+    assert np.isclose(val2, 2 * val1).all()
+
+
+def test_photon_density_scaling():
+    """Check that doubling photon_density doubles the output."""
+    energies = np.linspace(1, 10, 5)
+    k_abs = np.ones((1, 5, 1))
+
+    val1 = excited_state_generation(k_abs, photon_energies=energies, photon_density=1e25)
+    val2 = excited_state_generation(k_abs, photon_energies=energies, photon_density=2e25)
 
     assert np.isclose(val2, 2 * val1).all()
 
