@@ -92,8 +92,8 @@ def test_zero_vibrational_levels(sample_transition, request):
     Checks FCWD logic, with a peak position check only for the ordered case.
     """
     # 1. Force ground vibrational levels
-    sample_transition.state_low_energy.number_of_vibronic_modes = 0
-    sample_transition.state_high_energy.number_of_vibronic_modes = 0
+    sample_transition.state_low_energy.number_of_vibronic_modes = 1
+    sample_transition.state_high_energy.number_of_vibronic_modes = 1
 
     # 2. Define energies
     energy_value_00_peak = 1.5 + sample_transition.lambda_outer
