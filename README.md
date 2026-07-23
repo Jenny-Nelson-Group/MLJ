@@ -28,22 +28,24 @@ A Python implementation of the semi-classical MLJ theory for modeling charge and
 ---
 
 ## Installation
-
-> **Requires Python ≥ 3.11.**
+The package can be installed via
 
 ```bash
-git clone <https://github.com/Jenny-Nelson-Group/MLJ.git>
+pip install MLJ
+```
+and then be used as shown in the example below.
+
+For running it in development mode it is recommended to install in editable mode (`-e`)
+```bash
+git clone https://github.com/Jenny-Nelson-Group/MLJ.git
 cd MLJ
 pip install -e .
 ```
 
-Installing in editable mode (`-e`) is recommended during development so changes to
-the source take effect immediately.
-
 To include the development dependencies (tests, linting, pre-commit hooks):
 
 ```bash
-pip install -e ".[dev]"      # or: pip install -r requirements_dev.txt
+pip install -e ".[dev]"
 ```
 
 ---
@@ -51,6 +53,7 @@ pip install -e ".[dev]"      # or: pip install -r requirements_dev.txt
 ## Quick Start
 
 Simple demonstration of the capabilities of the library. Ready to run examples can be found in the examples folder.
+This simulates the case in which the transition from the ground state to a local exciton state (LE) is considered.
 ```python
 import MLJ as mlj
 import numpy as np
@@ -64,12 +67,9 @@ mlj.config.photon_energies = np.linspace(0.8, 2.0, 300)      # eV
 # 2. Define electronic states (energies in eV)
 gs = mlj.State(name="S0", energy=0.0)
 le = mlj.State(name="LE", energy=1.5, disorder_sigma=0.02)
-ct = mlj.State(name="CT", energy=1.35, disorder_sigma=0.02)
 
 # 3. Define transitions between states
 trans_LE   = mlj.Transition(le, gs, lambda_outer=0.05)
-trans_CT   = mlj.Transition(ct, gs, oscillator_strength=3)
-trans_LECT = mlj.Transition(le, ct, k_transfer=np.ones(n_temps))
 
 # 4. Assemble a system and plot its optical response
 system = mlj.StateSystem([trans_LE])
