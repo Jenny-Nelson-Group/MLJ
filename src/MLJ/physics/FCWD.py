@@ -115,8 +115,8 @@ def compute_fcwd(
 
     # --- Load constants and transition parameters ---
     boltzmann_eV = const.BOLTZMANN_CONSTANT_EV
-    v_initial = np.arange(n_vib_modes_initial + 1)
-    v_final = np.arange(n_vib_modes_final + 1)
+    v_initial = np.arange(n_vib_modes_initial)
+    v_final = np.arange(n_vib_modes_final)
 
     # 1. Define the 'Shapes' of your axes using None
     # Dimension Order: [v_i, v_f, E_phot, E_grid, Temp]
