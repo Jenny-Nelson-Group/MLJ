@@ -58,6 +58,7 @@ class State(ReactiveModule):
         disorder_sigma: float = 0.0,
         disorder_number_of_states: int = 21,
         disorder_integration_cut_off: float = 2.5,
+        disorder_max_cut_off: float = 0.2,
         disorder_scaling_cut_off: bool = True,
         disorder_distribution: "DistributionFunction | None" = None,
     ) -> None:
@@ -77,13 +78,12 @@ class State(ReactiveModule):
             self.disorder_sigma = disorder_sigma
             self.disorder_number_of_states = disorder_number_of_states
             self.disorder_distribution = (
-                gaussian_distribution
-                if disorder_distribution is None
-                else disorder_distribution
+                gaussian_distribution if disorder_distribution is None else disorder_distribution
             )
 
         if disorder_scaling_cut_off:
-            self.cut_off = disorder_integration_cut_off * self.disorder_sigma
+            cut_off = disorder_integration_cut_off * self.disorder_sigma
+            self.cut_off = min(disorder_max_cut_off, cut_off)
         else:
             self.cut_off = disorder_integration_cut_off
 

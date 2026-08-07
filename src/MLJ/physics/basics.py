@@ -3,9 +3,23 @@ from scipy.special import genlaguerre
 import MLJ.physics.constants as const
 from functools import lru_cache
 
+import math
+from scipy.special import eval_genlaguerre
+
 
 @lru_cache(maxsize=128)
 def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
+    """Tabulates L_{min(i,j)}^{|i-j|}(S) — the natural, order-independent FC building block."""
+    laguerre_base = np.zeros((N_vib_initial, N_vib_final))
+    for i in range(N_vib_initial):
+        for j in range(N_vib_final):
+            lo, hi = min(i, j), max(i, j)
+            laguerre_base[i, j] = eval_genlaguerre(lo, hi - lo, huang_rhys)
+    return laguerre_base
+
+
+@lru_cache(maxsize=128)
+def laguerre_2d_old(N_vib_initial, N_vib_final, huang_rhys):
     """Core physics calculation: generates the 2D Franck-Condon factor base."""
     laguerre_base = np.zeros((N_vib_initial, N_vib_final))
     for i in range(N_vib_initial):
@@ -13,6 +27,27 @@ def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
         k = j - i
         poly = [genlaguerre(i, kk)(huang_rhys) for kk in k]
         laguerre_base[i, j] = poly
+
+    laguerre_base.setflags(write=False)
+    return laguerre_base
+
+
+@lru_cache(maxsize=128)
+def laguerre_2d_gemini(N_vib_initial, N_vib_final, huang_rhys):
+    """Core physics calculation: generates the 2D Franck-Condon factor base."""
+    laguerre_base = np.zeros((N_vib_initial, N_vib_final))
+    for i in range(N_vib_initial):
+        for j in range(N_vib_final):
+            if j >= i:
+                laguerre_base[i, j] = eval_genlaguerre(i, j - i, huang_rhys)
+            else:
+                m = i - j
+                val = (
+                    ((-huang_rhys) ** m)
+                    * (math.factorial(j) / math.factorial(i))
+                    * eval_genlaguerre(j, m, huang_rhys)
+                )
+                laguerre_base[i, j] = val
 
     laguerre_base.setflags(write=False)
     return laguerre_base
@@ -99,4 +134,5 @@ def integral(y, x=None, axis=-1):
     if y.shape[axis] == 1:
         return np.squeeze(y, axis=axis)
 
-    return np.trapezoid(y=y, x=x, axis=axis)
+    # return np.trapezoid(y=y, x=x, axis=axis)
+    return np.sum(y, axis=axis) * (x[1] - x[0])

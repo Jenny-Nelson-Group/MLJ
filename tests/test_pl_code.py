@@ -113,31 +113,33 @@ def test_rates_example_values_matlab():
     """Test radiative and non-radiative rates obtained through the matlab code."""
 
     temperatures = np.array([300])
-    photon_energies = np.arange(0, 5, 0.01)
+    photon_energies = np.arange(0.31, 4.428, 0.005)
 
-    GS = State(number_of_vibronic_modes=15)
+    GS = State(number_of_vibronic_modes=16)
     LE = State(
         name="Local Exciton",
-        index=1,
+        index=2,
         energy=1.4,
-        number_of_vibronic_modes=10,
+        number_of_vibronic_modes=16,
         vib_spacing=0.15,
         disorder_sigma=0.01,
         disorder_number_of_states=21,
-        disorder_integration_cut_off=0.1,  # This is corresponds to 0.1 eV cutoff without scaling
-        disorder_scaling_cut_off=False,
+        disorder_integration_cut_off=2.5,
+        disorder_max_cut_off=0.2,
+        disorder_scaling_cut_off=True,
         disorder_distribution=gaussian_distribution_nonnorm,
     )
     CT = State(
         name="Charge Transfer",
         index=1,
         energy=1.2,
-        number_of_vibronic_modes=10,
+        number_of_vibronic_modes=16,
         vib_spacing=0.15,
         disorder_sigma=0.01,
         disorder_number_of_states=21,
-        disorder_integration_cut_off=0.1,  # This is corresponds to 0.1 eV cutoff without scaling
-        disorder_scaling_cut_off=False,
+        disorder_integration_cut_off=2.5,
+        disorder_max_cut_off=0.2,
+        disorder_scaling_cut_off=True,
         disorder_distribution=gaussian_distribution_nonnorm,
     )
 
@@ -159,14 +161,6 @@ def test_rates_example_values_matlab():
         static_dipole_moment=10 * 3.33e-30 / 1.6e-19,
     )
 
-    # V_nr = gs_le.electronic_coupling_non_radiative  # PL Temp Fit Reference: ?
-    # V_r = gs_le.electronic_coupling_radiative  # PL Temp Fit Reference: ?
-    # V_nr = gs_ct.electronic_coupling_non_radiative  # PL Temp Fit Reference: ?
-    # V_r = gs_ct.electronic_coupling_radiative  # PL Temp Fit Reference: ?
-
-    # print("V_nr:", V_nr)
-    # print("V_r:", V_r)
-
     rates_le = Rates(
         transition=gs_le,
         photon_energies=photon_energies,
@@ -180,23 +174,23 @@ def test_rates_example_values_matlab():
     )
 
     # The original code has a reverse temperature ordering
-    non_radiative_rates_matlab_LE = [179966844.7316]
-    radiative_rates_matlab_LE = [181885107.8947]
-    non_radiative_rates_matlab_CT = [6887403.3004]
-    radiative_rates_matlab_CT = [5081.7153]
+    non_radiative_rates_matlab_LE = [180372038.6821]
+    radiative_rates_matlab_LE = [181447771.5075]
+    non_radiative_rates_matlab_CT = [6902722.122]
+    radiative_rates_matlab_CT = [5068.0616]
 
     # Perform the assertions
     print("===LE===")
-    print("Radiative rates MLJ:", rates_le.rate_radiative_total)
-    print("Radiative rates matlab:", radiative_rates_matlab_LE)
+    # print("Radiative rates MLJ:", rates_le.rate_radiative_total)
+    # print("Radiative rates matlab:", radiative_rates_matlab_LE)
     print(
         "Relative Difference Radiative:",
         abs((rates_le.rate_radiative_total - radiative_rates_matlab_LE))
         / radiative_rates_matlab_LE,
     )
 
-    print("Non Radiative rates MLJ:", rates_le.rate_non_radiative_total)
-    print("Non Radiative rates matlab:", non_radiative_rates_matlab_LE)
+    # print("Non Radiative rates MLJ:", rates_le.rate_non_radiative_total)
+    # print("Non Radiative rates matlab:", non_radiative_rates_matlab_LE)
     print(
         "Relative Difference Non-Radiative:",
         abs((rates_le.rate_non_radiative_total - non_radiative_rates_matlab_LE))
@@ -204,25 +198,25 @@ def test_rates_example_values_matlab():
     )
 
     print("===CT===")
-    print("Radiative rates MLJ:", rates_ct.rate_radiative_total)
-    print("Radiative rates matlab:", radiative_rates_matlab_CT)
+    # print("Radiative rates MLJ:", rates_ct.rate_radiative_total)
+    # print("Radiative rates matlab:", radiative_rates_matlab_CT)
     print(
         "Relative Difference Radiative:",
         abs((rates_ct.rate_radiative_total - radiative_rates_matlab_CT))
         / radiative_rates_matlab_CT,
     )
 
-    print("Non Radiative rates MLJ:", rates_ct.rate_non_radiative_total)
-    print("Non Radiative rates matlab:", non_radiative_rates_matlab_CT)
+    # print("Non Radiative rates MLJ:", rates_ct.rate_non_radiative_total)
+    # print("Non Radiative rates matlab:", non_radiative_rates_matlab_CT)
     print(
         "Relative Difference Non-Radiative:",
         abs((rates_ct.rate_non_radiative_total - non_radiative_rates_matlab_CT))
         / non_radiative_rates_matlab_CT,
     )
 
-    relative_tolerance = 2e-2
+    relative_tolerance = 5e-6
     np.testing.assert_allclose(
-        rates_le.rate_radiative_total, non_radiative_rates_matlab_LE, rtol=relative_tolerance
+        rates_le.rate_radiative_total, radiative_rates_matlab_LE, rtol=relative_tolerance
     )
     np.testing.assert_allclose(
         rates_le.rate_non_radiative_total, non_radiative_rates_matlab_LE, rtol=relative_tolerance

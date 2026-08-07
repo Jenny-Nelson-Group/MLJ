@@ -19,7 +19,7 @@ def test_simple_state():
     assert simple_state.name == "State_1.0eV"
 
 
-def test_custom_state():
+def test_custom_state_below_max_cut_off():
     custom_state = State(
         name="LE",
         energy=1.5,
@@ -27,6 +27,7 @@ def test_custom_state():
         vib_spacing=0.2,
         disorder_sigma=0.1,
         disorder_number_of_states=5,
+        disorder_max_cut_off=0.3,
         disorder_scaling_cut_off=True,
         disorder_integration_cut_off=2.5,
     )
@@ -36,6 +37,27 @@ def test_custom_state():
     assert custom_state.vib_spacing == 0.2
     assert custom_state.disorder_sigma == 0.1
     assert custom_state.cut_off == 0.25
+    assert custom_state.disorder_number_of_states == 5
+
+
+def test_custom_state_above_max_cutoff():
+    custom_state = State(
+        name="LE",
+        energy=1.5,
+        number_of_vibronic_modes=12,
+        vib_spacing=0.2,
+        disorder_sigma=0.1,
+        disorder_number_of_states=5,
+        disorder_max_cut_off=0.2,
+        disorder_scaling_cut_off=True,
+        disorder_integration_cut_off=2.5,
+    )
+    assert custom_state.energy == 1.5
+    assert custom_state.name == "LE"
+    assert custom_state.number_of_vibronic_modes == 12
+    assert custom_state.vib_spacing == 0.2
+    assert custom_state.disorder_sigma == 0.1
+    assert custom_state.cut_off == 0.2
     assert custom_state.disorder_number_of_states == 5
 
 
