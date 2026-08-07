@@ -4,7 +4,7 @@ import pytest
 from scipy.signal import find_peaks
 from scipy.integrate import trapezoid
 
-from MLJ.physics.FCWD import fcwd
+from MLJ.physics.FCWD import fcwd, franck_condon_matrix
 from MLJ.physics.state import State
 from MLJ.physics.transition import Transition, ProcessType
 from MLJ.physics.config import config
@@ -249,3 +249,20 @@ def get_i00_i01_intensities(spectrum_intensity):
     ]  # Intensity of the second peak (0-1)
 
     return intensity_value_00_peak, intensity_value_01_peak
+
+
+@pytest.mark.parametrize("huang_rhys", [0.05, 0.5, 2.0])
+def test_fc_transition_probability_symmetry(huang_rhys):
+    """
+    Verifies Franck-Condon transition probability symmetry.
+
+    Ensures that reversing the transition direction yields the transposed
+    probability matrix, confirming P(i -> j) == P(j -> i).
+    """
+    n_a, n_b = 10, 7
+
+    fc_ab = franck_condon_matrix(n_a, n_b, huang_rhys)
+    fc_ba = franck_condon_matrix(n_b, n_a, huang_rhys)
+
+    # Transposition maps P(i -> j) to P(j -> i)
+    np.testing.assert_allclose(fc_ab, fc_ba.T, rtol=1e-12, atol=1e-14)

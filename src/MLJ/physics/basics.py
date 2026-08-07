@@ -1,20 +1,5 @@
 import numpy as np
-from scipy.special import eval_genlaguerre
 import MLJ.physics.constants as const
-from functools import lru_cache
-
-
-@lru_cache(maxsize=128)
-def laguerre_2d(N_vib_initial, N_vib_final, huang_rhys):
-    """Tabulates L_{min(i,j)}^{|i-j|}(S); the natural, order-independent FC building block."""
-    i = np.arange(N_vib_initial)[:, None]  # shape (N_i, 1)
-    j = np.arange(N_vib_final)[None, :]  # shape (1, N_f)
-    lo = np.minimum(i, j)
-    hi = np.maximum(i, j)
-
-    laguerre_base = eval_genlaguerre(lo, hi - lo, huang_rhys)  # shape (N_i, N_f), broadcast
-    laguerre_base.setflags(write=False)
-    return laguerre_base
 
 
 def gaussian(x, mean, sigma):
