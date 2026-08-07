@@ -127,6 +127,8 @@ def compute_fcwd(
     temperature_mat = temperatures[None, None, None, None, :]  # (1, 1, 1, 1, Nt)
 
     vib_diff = v_final_mat - v_initial_mat
+    vmin = np.minimum(v_initial_mat, v_final_mat)
+    vmax = np.maximum(v_initial_mat, v_final_mat)
 
     # 2D Laguerre table (v_i × v_f) and broadcast to right shape
     laguerre_base = laguerre_2d(n_vib_modes_initial, n_vib_modes_final, huang_rhys)
@@ -135,9 +137,9 @@ def compute_fcwd(
     # Huang Rhys Part
     factor1 = (
         np.exp(-huang_rhys)
-        * (huang_rhys ** (vib_diff))
-        * factorial(v_initial_mat)
-        / factorial(v_final_mat)
+        * (huang_rhys ** (np.abs(vib_diff)))
+        * factorial(vmin)
+        / factorial(vmax)
         * (laguerre_mat**2)
     )
 
