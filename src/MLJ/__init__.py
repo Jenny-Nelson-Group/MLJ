@@ -18,6 +18,7 @@ from MLJ.physics.rates import Rates
 from MLJ.physics.simulate_system import StateSystem
 from MLJ.helpers.plotting import plot_PL, plot_EL, plot_Absorbance
 from MLJ.physics.config import config
+from matplotlib.pyplot import show
 
 __all__ = [
     "State",
@@ -28,6 +29,7 @@ __all__ = [
     "plot_EL",
     "plot_Absorbance",
     "config",
+    "show",
 ]
 
 
