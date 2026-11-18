@@ -3,7 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def _base_plotter(energies, values, temperatures, ylabel, ax=None, normalise=False, **kwargs):
+def _base_plotter(
+    energies, values, temperatures, ylabel, ax=None, normalise=False, label=None, **kwargs
+):
     """Internal function to handle data processing for plotting."""
     ax = ax or plt.gca()
 
@@ -17,24 +19,37 @@ def _base_plotter(energies, values, temperatures, ylabel, ax=None, normalise=Fal
         values = values / values.max()
         ylabel = f"globally normalised {ylabel}"
 
-    # Data Wrangling
-    df = pd.DataFrame(
-        values,
-        index=energies,
-        columns=temperatures,
-    ).melt(ignore_index=False, var_name="Temperature (K)", value_name=ylabel)
+    # Single temperature: plot one line with the next colour in the cycle,
+    # so repeated calls (e.g. in a loop) give distinct, labelled curves
+    if len(temperatures) == 1:
+        ax.plot(
+            energies,
+            values[:, 0],
+            linewidth=2,
+            label=label or f"{temperatures[0]:g} K",
+            **kwargs,
+        )
+        ax.legend()
 
-    # Plotting
-    sns.lineplot(
-        data=df,
-        x=df.index,
-        y=ylabel,
-        hue="Temperature (K)",
-        palette="coolwarm",
-        linewidth=2,
-        ax=ax,
-        **kwargs,
-    )
+    else:
+        # Data Wrangling
+        df = pd.DataFrame(
+            values,
+            index=energies,
+            columns=temperatures,
+        ).melt(ignore_index=False, var_name="Temperature (K)", value_name=ylabel)
+
+        # Plotting
+        sns.lineplot(
+            data=df,
+            x=df.index,
+            y=ylabel,
+            hue="Temperature (K)",
+            palette="coolwarm",
+            linewidth=2,
+            ax=ax,
+            **kwargs,
+        )
 
     # Formatting
     ax.set_xlabel("Photon Energy (eV)", fontweight="bold")
@@ -46,7 +61,7 @@ def _base_plotter(energies, values, temperatures, ylabel, ax=None, normalise=Fal
 # --- Clean Public Functions ---
 
 
-def plot_PL(system, ax=None, normalise=False, **kwargs):
+def plot_PL(system, ax=None, normalise=False, label=None, **kwargs):
     return _base_plotter(
         system.photon_energies,
         system.emission_photoluminescence,
@@ -54,11 +69,12 @@ def plot_PL(system, ax=None, normalise=False, **kwargs):
         "PL Intensity",
         ax,
         normalise=normalise,
+        label=label,
         **kwargs,
     )
 
 
-def plot_EL(system, ax=None, normalise=False, **kwargs):
+def plot_EL(system, ax=None, normalise=False, label=None, **kwargs):
     return _base_plotter(
         system.photon_energies,
         system.emission_electroluminescence,
@@ -66,11 +82,12 @@ def plot_EL(system, ax=None, normalise=False, **kwargs):
         "EL Intensity",
         ax,
         normalise=normalise,
+        label=label,
         **kwargs,
     )
 
 
-def plot_Absorbance(system, ax=None, normalise=False, **kwargs):
+def plot_Absorbance(system, ax=None, normalise=False, label=None, **kwargs):
     return _base_plotter(
         system.photon_energies,
         system.absorbance,
@@ -78,5 +95,6 @@ def plot_Absorbance(system, ax=None, normalise=False, **kwargs):
         "Absorbance",
         ax,
         normalise=normalise,
+        label=label,
         **kwargs,
     )
