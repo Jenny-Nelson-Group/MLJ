@@ -9,7 +9,7 @@
 # Date: November 2025
 #####################################################################################
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # import and expose
 from MLJ.physics.state import State
