@@ -24,9 +24,60 @@ class ProcessType(Enum):
 
 
 class Transition(ReactiveModule):
-    GROUND_STATE = State(energy=0.0, name="Ground State")
+    """
+    Transition between two quantum states, described by Marcus-Levich-Jortner theory.
 
-    """Represents a transition between two quantum states."""
+    The order in which the two states are given does not matter: they are sorted
+    by energy automatically. If only one state is given, the other one is the
+    ground state (energy 0 eV).
+
+    Parameters
+    ----------
+    state_high_energy : State, optional
+        Higher-energy state of the transition (e.g. the excited state S1).
+    state_low_energy : State, optional
+        Lower-energy state of the transition. Defaults to the ground state.
+    oscillator_strength : float, optional
+        Dimensionless oscillator strength f of the transition. Sets the radiative
+        coupling (transition dipole moment), and therefore how strongly the
+        transition absorbs and emits light.
+    static_dipole_moment : float, optional
+        Change in static dipole moment between the two states, in units of
+        elementary charge x metre (Debye x 3.33e-30 / 1.6e-19). Used to calculate
+        the non-radiative coupling via the Mulliken-Hush relation.
+        Default: 3 Debye.
+    lambda_inner : float, optional
+        Inner (high-frequency, intramolecular) reorganisation energy in eV.
+        Treated quantum mechanically: together with the vibrational spacing of the
+        high-energy state it sets the Huang-Rhys factor
+        S = lambda_inner / vib_spacing, which controls the relative strength of
+        the vibronic peaks (0-0, 0-1, 0-2, ...).
+    lambda_outer : float, optional
+        Outer (low-frequency, e.g. environment/solvent) reorganisation energy in eV.
+        Treated classically: it broadens each vibronic peak (width grows with
+        lambda_outer and temperature) and shifts emission to lower and absorption
+        to higher energy. Must be greater than 0.
+    k_transfer : array, optional
+        Only for transitions between two excited states (e.g. LE -> CT).
+        Downhill transfer rate from the high- to the low-energy state in s^-1,
+        with one value per temperature (same shape as ``config.temperatures_K``).
+        The uphill rate is calculated from detailed balance.
+        Ignored for transitions to the ground state.
+
+    Attributes
+    ----------
+    optical_bandgap : float
+        Energy difference between the two states plus lambda_outer, in eV.
+    huang_rhys : float
+        Huang-Rhys factor S = lambda_inner / vib_spacing.
+
+    Examples
+    --------
+    >>> s1 = mlj.State(name="S1", energy=1.6)
+    >>> transition = mlj.Transition(s1, lambda_inner=0.05, lambda_outer=0.03)
+    """
+
+    GROUND_STATE = State(energy=0.0, name="Ground State")
 
     def __init__(
         self,
