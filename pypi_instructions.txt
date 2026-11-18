@@ -1,0 +1,16 @@
+
+# 1. Bump __version__ in src/MLJ/__init__.py
+
+# 2. Build & upload (repo root, venv active)
+pip install --upgrade build twine
+rm -rf dist/ build/ src/*.egg-info
+python -m build
+twine check dist/*
+twine upload -r MLJ dist/*          # put token in ~/.pypirc under [MLJ]
+
+# 3. Tag the release
+git tag v<version> && git push origin v<version>
+
+# 4. Install/check (wait a few min)
+pip install --upgrade --no-cache-dir MLJ
+python -c "import MLJ; print(MLJ.__version__)"
