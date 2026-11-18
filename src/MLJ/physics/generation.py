@@ -71,7 +71,7 @@ def excited_state_generation(
     """
 
     photon_density = config.photon_density if photon_density is None else photon_density
-    print(photon_density)
+
     # Validate k_abs shape against photon_energies
     k_abs = np.asarray(k_abs)
     if k_abs.ndim != 3 or k_abs.shape[1] != len(photon_energies):
@@ -86,6 +86,6 @@ def excited_state_generation(
 
     # Define integrand for the entire spectrum for every state and every temperature
     integrand = k_abs * laser_intensity[None, :, None]
-    print(f"int: {integrand}")
+
     # Integrate over photon_energies (axis 1), return (n_states, n_temperatures)
     return photon_density * integral(integrand, photon_energies, axis=1)
