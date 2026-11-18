@@ -13,7 +13,10 @@ from typing import Callable
 import numpy as np
 from MLJ.helpers.caching import ReactiveModule
 
-DistributionFunction = Callable[[np.ndarray, float, float], np.ndarray]
+# A disorder distribution is called as f(state=..., x=...): it gets the State
+# (for state.energy, state.disorder_sigma, ...) and the energy grid x in eV,
+# and returns one weight per point of x.
+DistributionFunction = Callable[["State", np.ndarray], np.ndarray]
 
 
 class State(ReactiveModule):
@@ -42,7 +45,10 @@ class State(ReactiveModule):
         Symmetric cut-off in units of `sigma` for evaluating the disorder distribution.
         The integration bounds become: mean ± cut_off * sigma.
     disorder_distribution : DistributionFunction or None, optional
-        Callable with signature ``f(x, mean, sigma)`` returning probability weights.
+        Function ``f(state, x)`` that returns one weight per energy in ``x`` (eV).
+        It is called with keyword arguments, so the parameters must be named
+        ``state`` and ``x``. Use ``state.energy`` and ``state.disorder_sigma``
+        inside it for the centre and width of the distribution.
         If ``None`` and disorder is active, a Gaussian is used by default.
         When disorder is disabled (sigma == 0 or number_of_states == 1),
         this parameter is ignored and a discrete delta single energy is assumed.
@@ -108,10 +114,8 @@ class State(ReactiveModule):
         return f"State(Name='{self.name}', Energy={self.energy:.4f} eV)"
 
 
-DistributionFunction = Callable[[State, np.ndarray], np.ndarray]
-
-
 def single_value(state: State, x: np.ndarray) -> np.ndarray:
+    """No disorder: weight 1 for every point (used when disorder_sigma is 0)."""
     return np.ones_like(x, dtype=float)
 
 
@@ -125,7 +129,7 @@ def gaussian_distribution(state: State, x: np.ndarray) -> np.ndarray:
 
 def gaussian_distribution_nonnorm(state: State, x: np.ndarray) -> np.ndarray:
     """
-    Default energetic disorder distribution: Gaussian around `state.energy`
-    with width `state.disorder_sigma`.
+    Non-normalised Gaussian around `state.energy` with width `state.disorder_sigma`
+    (peak height 1 instead of area 1).
     """
     return gaussian(x, state.energy, state.disorder_sigma)
